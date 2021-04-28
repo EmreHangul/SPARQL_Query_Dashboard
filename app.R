@@ -14,16 +14,8 @@ library(dashboardthemes)
 ########################################################
 options(shiny.maxRequestSize = 200*1024^2)
 
-# read file names from the zipped file
-file_names <- as.character(unzip("data.zip", list = TRUE)$Name)[-c(1:3)]
-
-# delete the unwanted strings from the file names
-file_names <- substr(file_names,44,3000)
-file_names <- strsplit(file_names,".gz")
-file_names <- unlist(file_names)
-
 # construct a list of all the data from the log files
-initial_data <- lapply(file_names, read_combined)
+initial_data <- lapply(unzip("data.zip"), read_combined)
 
 # add all the log data into a 1 common data object
 i <- 1
