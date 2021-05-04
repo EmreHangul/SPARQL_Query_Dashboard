@@ -4,10 +4,11 @@ library(webreadr)
 library(DT)
 library(magrittr)
 library(ggplot2)
-library(ggplot2)
 library(dplyr)
 library(plotly)
 library(dashboardthemes)
+library(shinyFiles)
+library(fs)
 #####Live content download. Later do this!##############
 #x <- GET(url = URL)
 #data <- content(x) 
@@ -72,39 +73,50 @@ ui <- dashboardPage(skin = "black",
     tabItems(
       tabItem(tabName = "Home", 
               fluidRow(
-                tabBox(width = 8,
+                tabBox(width = 12,
                   title = "",
                   tabPanel(title = "Files",
-                    dataTableOutput("table")),
-                  tabPanel(title = "Requests",
-                    plotlyOutput("first")
+                           fluidRow(
+                             column(width = 3,
+                                    shinyFilesButton(id = "file",
+                                                     label = "Select File",
+                                                     title = "Please select one or multiple files:",
+                                                     multiple = TRUE,
+                                                     icon = icon(lib = "font-awesome",
+                                                                 name = "file-alt"),
+                                                     viewtype = "detail"),
+                                    textOutput(outputId = "text")),
+                             column(width = 9,
+                                    dataTableOutput("table"))
+                           )
                   ),
+                  tabPanel(title = "Requests",
+                           fluidRow(
+                             column(width = 8,
+                                    plotlyOutput("first")),
+                             column(width = 4,
+                                    dateRangeInput(inputId = "date_range_1",
+                                                   label = "Choose Dates Between:",
+                                                   start = min(data$day),
+                                                   end   = max(data$day)),
+                                    selectInput(inputId = "select_request",
+                                                label = "Select an HTTP Request Type:",
+                                                choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
+                                                selected = "GET")))),
                   tabPanel(title = "Queries",
-                    plotlyOutput("second")
-                  )
-                ),
-                column(width = 4,
-                  fluidRow(
-                    title= "Choose Date Between",
-                    fileInput(inputId = "file", 
-                              label = "Choose a log-file: (Max. 200MB)",
-                              buttonLabel = "Search"),
-                    dateRangeInput(inputId = "date_range",
-                                   label = "Choose Dates Between:",
-                                   start = min(data$day),
-                                   end   = max(data$day)),
-                    selectInput(inputId = "select_request",
-                                label = "Select an HTTP Request Type:",
-                                choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
-                                selected = "GET"),
-                    selectInput(inputId = "select_sparql",
-                                label = "Select a SPARQL Query Type:",
-                                choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
-                    verbatimTextOutput(outputId = "text")
-                  )
-                )
+                           fluidRow(
+                             column(width = 8,
+                                    plotlyOutput("second")),
+                             column(width = 4,
+                                    dateRangeInput(inputId = "date_range_2",
+                                                   label = "Choose Dates Between:",
+                                                   start = min(data$day),
+                                                   end   = max(data$day)),
+                                    selectInput(inputId = "select_sparql",
+                                                label = "Select a SPARQL Query Type:",
+                                                choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")))))
               )
-      ),
+      )),
       tabItem(tabName = "About",
               wellPanel(
                 h4("--> This application is created to visualize the number of SPARQL queries
@@ -118,18 +130,77 @@ ui <- dashboardPage(skin = "black",
 )
 
 server <- function(input, output, session){
+  # Server side selectfile codes
+  volumes <- c(Home = fs::path_wd(), 
+               "R Installation" = R.home(), 
+               getVolumes()())
+  shinyFileChoose(input, "file", 
+                  roots = volumes, 
+                  session = session)
+  
+  output$text <- renderText({
+    
+    validate(
+      need(input$file$datapath == character(0), message = "No files are currently selected. Please select a file.")
+    )
+    
+    input$file$datapath
+  })
+
+  output$table <- renderDataTable({
+    
+    # parse the file input into a more usable format
+    input_file <- parseFilePaths(roots = volumes,
+                               input$file)
+      
+    # construct a list of all the data from the log files
+    initial_d <- lapply(input_file$datapath, read_combined)
+      
+    # add all the log data into a 1 common data object
+    i <- 1
+    log_data <- data.frame()
+      
+    while (i<=length(initial_d)) {
+      log_data <- rbind(log_data, initial_d[[i]])
+      i = i + 1
+    }
+    
+    # create a dataframe using log data  
+    log_data %>% datatable(rownames = FALSE,
+                           options = list(
+                              lengthMenu = c(5,10,20,50),
+                              autoWidth = TRUE,
+                              scrollX = TRUE,
+                              columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
+                           filter = "top")
+    
+  })
   
   # Update date ranges 
-  observeEvent(input$date_range[1], {
-    end_date = input$date_range[2]
+  observeEvent(input$date_range_1[1], {
+    end_date = input$date_range_1[2]
     
     # If end date is earlier than start date, update the end date to be the same as the new start date
-    if(input$date_range[2] < input$date_range[1]){
-      end_date = input$date_range[1]
+    if(input$date_range_1[2] < input$date_range_1[1]){
+      end_date = input$date_range_1[1]
     }
     updateDateRangeInput(session,
-                         inputId = "date_range",
-                         start = input$date_range[1],
+                         inputId = "date_range_1",
+                         start = input$date_range_1[1],
+                         end = end_date)
+    
+  })
+  
+  observeEvent(input$date_range_2[1], {
+    end_date = input$date_range_2[2]
+    
+    # If end date is earlier than start date, update the end date to be the same as the new start date
+    if(input$date_range_2[2] < input$date_range_2[1]){
+      end_date = input$date_range_2[1]
+    }
+    updateDateRangeInput(session,
+                         inputId = "date_range_2",
+                         start = input$date_range_2[1],
                          end = end_date)
     
   })
@@ -145,7 +216,7 @@ server <- function(input, output, session){
         request %>% 
           filter(grepl(input$select_request,method)) %>%
           select(method,day) %>% 
-          filter(day >= input$date_range[1] & day <= input$date_range[2]) %>% 
+          filter(day >= input$date_range_1[1] & day <= input$date_range_1[2]) %>% 
           group_by(day) %>% 
           count(day) %>% 
           rename(count = n)
@@ -163,7 +234,7 @@ server <- function(input, output, session){
     request %>% 
       filter(grepl(paste0("sparql.*", input$select_sparql), asset)) %>% 
       select(method,day) %>%
-      filter(day >= input$date_range[1] & day <= input$date_range[2]) %>%
+      filter(day >= input$date_range_2[1] & day <= input$date_range_2[2]) %>%
       group_by(day) %>% 
       count(day) %>% 
       rename(count = n)
@@ -200,16 +271,6 @@ server <- function(input, output, session){
       theme(axis.text.x = element_text(angle = 90, hjust = 1),
             axis.title.x = element_blank(),
             axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
-  })
- 
-  output$table <- renderDataTable({
-      data %>% datatable(rownames = FALSE,
-                         options = list(
-                                        lengthMenu = c(5,10,20,50),
-                                        autoWidth = TRUE,
-                                        scrollX = TRUE,
-                                        columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
-                         filter = "top")
   })
   
 }
