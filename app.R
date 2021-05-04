@@ -8,12 +8,6 @@ library(dplyr)
 library(plotly)
 library(dashboardthemes)
 library(shinyFiles)
-library(fs)
-#####Live content download. Later do this!##############
-#x <- GET(url = URL)
-#data <- content(x) 
-########################################################
-options(shiny.maxRequestSize = 200*1024^2)
 
 # construct a list of all the data from the log files
 initial_data <- lapply(unzip("data.zip"), read_combined)
@@ -176,7 +170,7 @@ server <- function(input, output, session){
     
   })
   
-  # Update date ranges 
+  # Update date range 1 
   observeEvent(input$date_range_1[1], {
     end_date = input$date_range_1[2]
     
@@ -191,6 +185,7 @@ server <- function(input, output, session){
     
   })
   
+  # Update date range 2
   observeEvent(input$date_range_2[1], {
     end_date = input$date_range_2[2]
     
@@ -205,7 +200,7 @@ server <- function(input, output, session){
     
   })
   
-  # Reactive for http requests
+  # Reactive data for http requests
   rv <- eventReactive(input$select_request, {
     
         validate(
@@ -223,7 +218,7 @@ server <- function(input, output, session){
         
   })
   
-  # Reactive for sparql types
+  # Reactive data for sparql types
   rv2 <- eventReactive(input$select_sparql, {
     
     validate(
@@ -241,6 +236,7 @@ server <- function(input, output, session){
     
   })
   
+  # Interactive plot for HTTP Requests
   output$first <- renderPlotly({
     
     ggplotly(
@@ -257,6 +253,7 @@ server <- function(input, output, session){
             axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
     })
   
+  # Interactive plot for SPARQL Queries
   output$second <- renderPlotly({
     
     ggplotly(
