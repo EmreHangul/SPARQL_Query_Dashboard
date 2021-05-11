@@ -8,6 +8,7 @@ library(dplyr)
 library(plotly)
 library(dashboardthemes)
 library(shinyFiles)
+library(shinyWidgets)
 
 # function for displaying loading icon
 shiny_busy <- function() {
@@ -37,8 +38,8 @@ ui <- dashboardPage(skin = "black",
   dashboardBody(shiny_busy(), 
                 shinyDashboardThemes(theme = "poor_mans_flatly"),
                 tags$head(tags$style(HTML(".shiny-output-error-validation {color: #FF9900; font-size: 20px; font-weight: bold}"))),
-                tags$head(tags$style("#text{font-size: 18px;font-weight: bold}")
-                ),
+                tags$head(tags$style("#text{font-size: 18px;font-weight: bold}")),
+                tags$head(tags$style("#text2{font-size: 18px;font-weight: bold}")),
     tabItems(
       tabItem(tabName = "Home", 
               fluidRow(
@@ -53,13 +54,36 @@ ui <- dashboardPage(skin = "black",
                                                      multiple = TRUE,
                                                      icon = icon(lib = "font-awesome",
                                                                  name = "file-alt"),
-                                                     viewtype = "detail"))),
+                                                     viewtype = "detail"),
+                                           shinyDirButton(id = "dir",
+                                                          label = "Select Directory",
+                                                          title = "Please select a directory",
+                                                          allowDirCreate = TRUE,
+                                                          icon = icon(lib = "font-awesome",
+                                                                      name = "folder-open"),
+                                                          viewtype = "detail"),
+                                           conditionalPanel(
+                                             condition = "output.conddir==false",
+                                             wellPanel("Selected directory name:",
+                                                         textOutput("text2")),
+                                             multiInput(inputId = "multi",
+                                                        label = "Files:",
+                                                        choices = "",
+                                                        selected = "",
+                                                        width = "900px",
+                                                        options = list(
+                                                          non_selected_header = "Choose Files:",
+                                                          selected_header = "You have selected:"
+                                                        )),
+                                             dataTableOutput("table2")))),
                            fluidRow(column(width = 12, 
-                                           align = "center", 
-                                           wellPanel("Selected file name:",
-                                                     textOutput("text")))),
-                           fluidRow(dataTableOutput("table"))
-                  ),
+                                           align = "center",
+                                           conditionalPanel(
+                                             condition = "output.conddir==true",
+                                             wellPanel("Selected file name:",
+                                                       textOutput("text")),
+                                             dataTableOutput("table")))
+                                           )),
                   tabPanel(title = "Requests",
                            fluidRow(
                              column(width = 8,
@@ -101,19 +125,82 @@ ui <- dashboardPage(skin = "black",
 
 server <- function(input, output, session){
   
-  # Server side file select code
-  volumes <- c(Home = fs::path_wd(), 
+  # create home directory and volumes path
+  volumes <- c(Home = fs::path_home(), 
                "R Installation" = R.home(), 
                getVolumes()())
+  
+  # choose file from the system
   shinyFileChoose(input, "file", 
                   roots = volumes, 
                   session = session)
+  
+  # choose a directory containing files
+  shinyDirChoose(input, "dir",
+                 roots = volumes,
+                 session = session)
+  
+  # update conditional panel condition when directory button is clicked
+  output$conddir <- reactive({
+    is.integer(tail(input$dir,1))
+  })
+  
+  # output options for multiInput conditional panel
+  outputOptions(output,"conddir",suspendWhenHidden = FALSE)
   
   # initialization of reactive input data
   rv <- reactiveValues(log_data = data.frame(),
                         request = data.frame())
   
-  # update the reactive data when an input file is selected
+  
+  # show files inside of a directory as multiInput when a directory is selected
+  observeEvent(input$dir,{
+    input_dir <- parseDirPath(roots = volumes, 
+                              input$dir)
+    updateMultiInput(session = session, inputId = "multi", choices = list.files(input_dir))
+  })
+  
+  # update the reactive data when an input file is selected (from select directory)
+  observeEvent(input$multi,{
+    # parse the file input into a more usable format
+    input_d <- parseDirPath(roots = volumes,
+                                 input$dir)
+    
+    # construct a list of all the data from the log files
+    initial_d <- lapply(list.files(input_d)[list.files(input_d)==input$multi], read_combined)
+    
+    # add all the log data into a 1 common data object
+    i <- 1
+    logs <- data.frame()
+    
+    while (i<=length(initial_d)) {
+      logs <- rbind(logs, initial_d[[i]])
+      i = i + 1
+    }
+    
+    # update the reactive data with the corresponding log file
+    rv$log_data <- logs
+    
+    # if a file is selected, update the corresponding data into solicited format
+    if(length(logs) != 0){
+      
+      logs$year <- format(as.POSIXct(logs$timestamp), "%Y")
+      logs$month <- format(as.POSIXct(logs$timestamp), "%Y-%m")
+      logs$day <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d")
+      logs$hour <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d %H:%M")
+      
+      requests <- split_clf(logs$request) %>% 
+        cbind(year = logs$year,
+              month = logs$month,
+              day = logs$day, 
+              hour = logs$hour)
+      
+      rv$request <- requests
+      
+    }
+  })
+  
+  # update the reactive data when an input file is selected (from select file)
   observeEvent(input$file,{
     
     # parse the file input into a more usable format
@@ -232,7 +319,23 @@ server <- function(input, output, session){
     
   })
   
-  # show the input data as table
+  # display the name of the selected directory
+  output$text2 <- renderText({
+    # if the last element of input$dir is integer (it means no file is currently selected), return warning.
+    validate(
+      need(!is.integer(input$dir), "No directory is currently selected. Please select a directory.")
+    )
+    input_dir <- parseDirPath(roots = volumes, input$dir)
+    
+    # set the working directory as the selected directory
+    setwd(input_dir)
+    
+    # return the name of the selected directory(now also the working directory)
+    print(getwd())
+    
+  })
+  
+  # show the input data as table (from selected file)
   output$table <- renderDataTable({
     
     # create a dataframe using log data  
@@ -244,6 +347,17 @@ server <- function(input, output, session){
                                      columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
                                    filter = "top")
     
+  })
+  
+  # show the input data as table (from selected directory)
+  output$table2 <- renderDataTable({
+    rv$log_data %>% datatable(rownames = FALSE,
+                              options = list(
+                                lengthMenu = c(5,10,20,50),
+                                autoWidth = TRUE,
+                                scrollX = TRUE,
+                                columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
+                              filter = "top")
   })
   
   # Interactive plot for HTTP Requests
