@@ -25,100 +25,108 @@ shiny_busy <- function() {
 ################################DASHBOARD########################################
 
 ui <- dashboardPage(skin = "black",
-  dashboardHeader(title = shinyDashboardLogo(theme = "poor_mans_flatly",
-                                             boldText = "Query Dashboard")),
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem(tabName = "Home", text = "Home"),
-      menuItem(tabName = "About", text = "About the App"),
-      menuItem(tabName = "Guide", text = "Manual Guide")
-    ),
-    sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search data")
-  ),
-  dashboardBody(shiny_busy(), 
-                shinyDashboardThemes(theme = "poor_mans_flatly"),
-                tags$head(tags$style(HTML(".shiny-output-error-validation {color: #FF9900; font-size: 20px; font-weight: bold}"))),
-                tags$head(tags$style("#text{font-size: 18px;font-weight: bold}")),
-                tags$head(tags$style("#text2{font-size: 18px;font-weight: bold}")),
-    tabItems(
-      tabItem(tabName = "Home", 
-              fluidRow(
-                tabBox(width = 12,
-                  title = "",
-                  tabPanel(title = "Files",
-                           fluidRow(column(width = 12,
-                                           align = "center",
-                                           shinyFilesButton(id = "file",
-                                                     label = "Select File",
-                                                     title = "Please select one or multiple files:",
-                                                     multiple = TRUE,
-                                                     icon = icon(lib = "font-awesome",
-                                                                 name = "file-alt"),
-                                                     viewtype = "detail"),
-                                           shinyDirButton(id = "dir",
-                                                          label = "Select Directory",
-                                                          title = "Please select a directory",
-                                                          allowDirCreate = TRUE,
-                                                          icon = icon(lib = "font-awesome",
-                                                                      name = "folder-open"),
-                                                          viewtype = "detail"),
-                                           conditionalPanel(
-                                             condition = "output.conddir==false",
-                                             wellPanel("Selected directory name:",
-                                                         textOutput("text2")),
-                                             multiInput(inputId = "multi",
-                                                        label = "Files:",
-                                                        choices = "",
-                                                        selected = "",
-                                                        width = "900px",
-                                                        options = list(
-                                                          non_selected_header = "Choose Files:",
-                                                          selected_header = "You have selected:"
-                                                        )),
-                                             dataTableOutput("table2")))),
-                           fluidRow(column(width = 12, 
-                                           align = "center",
-                                           conditionalPanel(
-                                             condition = "output.conddir==true",
-                                             wellPanel("Selected file name:",
-                                                       textOutput("text")),
-                                             dataTableOutput("table")))
-                                           )),
-                  tabPanel(title = "Requests",
-                           fluidRow(
-                             column(width = 8,
-                                    plotlyOutput("first")),
-                             column(width = 4,
-                                    dateRangeInput(inputId = "date_range_1",
-                                                   label = "Choose Dates Between:",
-                                                   start = "2020-01-01"),
-                                    selectInput(inputId = "select_request",
-                                                label = "Select an HTTP Request Type:",
-                                                choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
-                                                selected = "GET")))),
-                  tabPanel(title = "Queries",
-                           fluidRow(
-                             column(width = 8,
-                                    plotlyOutput("second")),
-                             column(width = 4,
-                                    dateRangeInput(inputId = "date_range_2",
-                                                   label = "Choose Dates Between:",
-                                                   start = "2020-01-01"),
-                                    selectInput(inputId = "select_sparql",
-                                                label = "Select a SPARQL Query Type:",
-                                                choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")))))
-              )
-      )),
-      tabItem(tabName = "About",
-              wellPanel(
-                h4("--> This application is created to visualize the number of SPARQL queries
+                    dashboardHeader(title = shinyDashboardLogo(theme = "poor_mans_flatly",
+                                                               boldText = "Query Dashboard")),
+                    dashboardSidebar(
+                      sidebarMenu(
+                        menuItem(tabName = "Home", text = "Home"),
+                        menuItem(tabName = "About", text = "About the App"),
+                        menuItem(tabName = "Guide", text = "Manual Guide")
+                      ),
+                      sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search data")
+                    ),
+                    dashboardBody(shiny_busy(), 
+                                  shinyDashboardThemes(theme = "poor_mans_flatly"),
+                                  tags$head(tags$style(HTML(".shiny-output-error-validation {color: #FF9900; font-size: 20px; font-weight: bold}"))),
+                                  tags$head(tags$style("#text{font-size: 18px;font-weight: bold}")),
+                                  tags$head(tags$style("#text2{font-size: 18px;font-weight: bold}")),
+                                  tabItems(
+                                    tabItem(tabName = "Home", 
+                                            fluidRow(
+                                              tabBox(width = 12,
+                                                     title = "",
+                                                     tabPanel(title = "Files",
+                                                              fluidRow(column(width = 12,
+                                                                              align = "center",
+                                                                              shinyFilesButton(id = "file",
+                                                                                               label = "Select File",
+                                                                                               title = "Please select one or multiple files:",
+                                                                                               multiple = TRUE,
+                                                                                               icon = icon(lib = "font-awesome",
+                                                                                                           name = "file-alt"),
+                                                                                               viewtype = "detail"),
+                                                                              shinyDirButton(id = "dir",
+                                                                                             label = "Select Directory",
+                                                                                             title = "Please select a directory",
+                                                                                             allowDirCreate = TRUE,
+                                                                                             icon = icon(lib = "font-awesome",
+                                                                                                         name = "folder-open"),
+                                                                                             viewtype = "detail"),
+                                                                              conditionalPanel(
+                                                                                condition = "output.conddir==false",
+                                                                                wellPanel("Selected directory name:",
+                                                                                          textOutput("text2")),
+                                                                                multiInput(inputId = "multi",
+                                                                                           label = "Files:",
+                                                                                           choices = "",
+                                                                                           selected = "",
+                                                                                           width = "900px",
+                                                                                           options = list(
+                                                                                             non_selected_header = "Choose Files:",
+                                                                                             selected_header = "You have selected:"
+                                                                                           )),
+                                                                                dataTableOutput("table2")))),
+                                                              fluidRow(column(width = 12, 
+                                                                              align = "center",
+                                                                              conditionalPanel(
+                                                                                condition = "output.conddir==true",
+                                                                                wellPanel("Selected file name:",
+                                                                                          textOutput("text")),
+                                                                                dataTableOutput("table")))
+                                                              )),
+                                                     tabPanel(title = "Requests",
+                                                              fluidRow(
+                                                                column(width = 8,
+                                                                       plotlyOutput("first")),
+                                                                column(width = 4,
+                                                                       dateRangeInput(inputId = "date_range_1",
+                                                                                      label = "Choose Dates Between:",
+                                                                                      start = "2020-01-01"),
+                                                                       selectInput(inputId = "select_request",
+                                                                                   label = "Select an HTTP Request Type:",
+                                                                                   choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
+                                                                                   selected = "GET"),
+                                                                       radioButtons(inputId = "radio_1",
+                                                                                    label = "Select a date format:",
+                                                                                    choices = c("Year","Month","Day","Hour"),
+                                                                                    selected = "Day")))),
+                                                     tabPanel(title = "Queries",
+                                                              fluidRow(
+                                                                column(width = 8,
+                                                                       plotlyOutput("second")),
+                                                                column(width = 4,
+                                                                       dateRangeInput(inputId = "date_range_2",
+                                                                                      label = "Choose Dates Between:",
+                                                                                      start = "2020-01-01"),
+                                                                       selectInput(inputId = "select_sparql",
+                                                                                   label = "Select a SPARQL Query Type:",
+                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
+                                                                       radioButtons(inputId = "radio_2",
+                                                                                    label = "Select a date format:",
+                                                                                    choices = c("Year","Month","Day","Hour"),
+                                                                                    selected = "Day"))))
+                                              )
+                                            )),
+                                    tabItem(tabName = "About",
+                                            wellPanel(
+                                              h4("--> This application is created to visualize the number of SPARQL queries
                  made by the users throughout....."))
-      ),
-      tabItem(tabName = "Guide",
-              h2("this will be a manual guide.")
-              )
-    )
-  )
+                                    ),
+                                    tabItem(tabName = "Guide",
+                                            h2("this will be a manual guide.")
+                                    )
+                                  )
+                    )
 )
 
 ################################SERVER###########################################
@@ -150,7 +158,7 @@ server <- function(input, output, session){
   
   # initialization of reactive input data
   rv <- reactiveValues(log_data = data.frame(),
-                        request = data.frame())
+                       request = data.frame())
   
   
   # show files inside of a directory as multiInput when a directory is selected
@@ -164,7 +172,7 @@ server <- function(input, output, session){
   observeEvent(input$multi,{
     # parse the file input into a more usable format
     input_d <- parseDirPath(roots = volumes,
-                                 input$dir)
+                            input$dir)
     
     # construct a list of all the data from the log files
     initial_d <- lapply(list.files(input_d)[list.files(input_d)==input$multi], read_combined)
@@ -218,7 +226,7 @@ server <- function(input, output, session){
       logs <- rbind(logs, initial_data[[i]])
       i = i + 1
     }
-   
+    
     
     # update the reactive data with the corresponding log file
     rv$log_data <- logs
@@ -238,43 +246,86 @@ server <- function(input, output, session){
               hour = logs$hour)
       
       rv$request <- requests
-    
+      
     }
   })
-
+  
   # Reactive data for http requests
-  rv_request <- eventReactive(input$select_request, {
+  rv_request <- eventReactive(c(input$select_request, input$radio_1, input$date_range_1), {
+    
+    t <- tolower(input$radio_1)
     
     validate(
       need(grepl(input$select_request, rv$request$method)==TRUE,
-            message = "No such requests are found! Please try another type of request.")
+           message = "No such requests are found! Please try another type of request.")
     )
-
-    rv$request %>% 
-      filter(grepl(input$select_request, rv$request$method)) %>% 
-      select(method,day) %>% 
-      filter(day >= input$date_range_1[1] & day <= input$date_range_1[2]) %>% 
-      group_by(day) %>% 
-      count(day) %>% 
-      rename(count = n)
+    
+    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+    if(t == "hour"){
+      
+      # construct hourly intervals
+      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+      hour_groups <- cut(hour_groups, "hours")
+      hour_groups <- as.character(hour_groups)
+      
+      rv$request %>% 
+        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+        filter(grepl(input$select_request, rv$request$method)) %>%
+        select(-c(asset,protocol)) %>% 
+        filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
+        group_by(hours) %>% 
+        count(hours) %>% 
+        rename(count = n, hour = hours)
+      
+    } else {
+      
+      rv$request %>% 
+        filter(grepl(input$select_request, rv$request$method)) %>%
+        select(-c(asset,protocol)) %>% 
+        filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
+        group_by(.[t]) %>% 
+        count(.[t]) %>% 
+        rename(count = n)
+    }
   })
   
   # Reactive data for sparql types
-  rv_sparql <- eventReactive(input$select_sparql, {
+  rv_sparql <- eventReactive(c(input$select_sparql, input$radio_2, input$date_range_2), {
+    
+    t <- tolower(input$radio_2)
     
     validate(
       need(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)==TRUE,
            message = "No such queries are found! Please try another type of query.")
     )
     
-    rv$request %>% 
-      filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
-      select(method,day) %>%
-      filter(day >= input$date_range_2[1] & day <= input$date_range_2[2]) %>%
-      group_by(day) %>% 
-      count(day) %>% 
-      rename(count = n)
-    
+    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+    if(t == "hour"){
+      
+      # construct hourly intervals
+      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+      hour_groups <- cut(hour_groups, "hours")
+      hour_groups <- as.character(hour_groups)
+      
+      rv$request %>% 
+        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+        filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+        select(-c(method,protocol)) %>%
+        filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
+        group_by(hours) %>% 
+        count(hours) %>% 
+        rename(count = n, hour = hours)
+      
+    } else {
+      
+      rv$request %>% 
+        filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+        select(-c(method,protocol)) %>%
+        filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
+        group_by(.[t]) %>% 
+        count(.[t]) %>% 
+        rename(count = n)
+    }
   })
   
   # Update date range 1 
@@ -340,12 +391,12 @@ server <- function(input, output, session){
     
     # create a dataframe using log data  
     rv$log_data %>% datatable(rownames = FALSE,
-                                   options = list(
-                                     lengthMenu = c(5,10,20,50),
-                                     autoWidth = TRUE,
-                                     scrollX = TRUE,
-                                     columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
-                                   filter = "top")
+                              options = list(
+                                lengthMenu = c(5,10,20,50),
+                                autoWidth = TRUE,
+                                scrollX = TRUE,
+                                columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
+                              filter = "top")
     
   })
   
@@ -362,36 +413,36 @@ server <- function(input, output, session){
   
   # Interactive plot for HTTP Requests
   output$first <- renderPlotly({
-    
+ 
     ggplotly(
-    rv_request() %>% 
-      ggplot(aes(x=day,y=count)) +
-      geom_bar(stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
-      geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
-      labs(title = "Number of Requests Over Days",
-           x = "Days",
-           y = "Total Requests") +
-      theme_light() +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1),
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
-    })
+      rv_request() %>% 
+        ggplot(aes_string(x = tolower(input$radio_1), y = "count")) +
+        geom_bar(width = 0.75, stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
+        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
+        labs(title = "Number of Requests Over Days",
+             x = "Days",
+             y = "Total Requests") +
+        theme_light() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
+  })
   
   # Interactive plot for SPARQL Queries
   output$second <- renderPlotly({
     
     ggplotly(
-    rv_sparql() %>% 
-      ggplot(aes(x=day,y=count)) +
-      geom_bar(stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
-      geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
-      labs(title = "Number of Queries Over Days",
-           x = "Days",
-           y = "Total Queries") +
-      theme_light() +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1),
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
+      rv_sparql() %>% 
+        ggplot(aes_string(x = tolower(input$radio_2), y = "count")) +
+        geom_bar(stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
+        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
+        labs(title = "Number of Queries Over Days",
+             x = "Days",
+             y = "Total Queries") +
+        theme_light() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
   })
   
 }
