@@ -10,7 +10,7 @@ library(dashboardthemes)
 library(shinyFiles)
 library(shinyWidgets)
 
-# function for displaying loading icon
+# function for displaying "loading" icon
 shiny_busy <- function() {
   # use &nbsp; for some alignment, if needed
   HTML("&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;", paste0(
@@ -33,7 +33,7 @@ ui <- dashboardPage(skin = "black",
                         menuItem(tabName = "About", text = "About the App"),
                         menuItem(tabName = "Guide", text = "Manual Guide")
                       ),
-                      sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search data")
+                      sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search")
                     ),
                     dashboardBody(shiny_busy(), 
                                   shinyDashboardThemes(theme = "poor_mans_flatly"),
@@ -91,11 +91,14 @@ ui <- dashboardPage(skin = "black",
                                                                 column(width = 4,
                                                                        dateRangeInput(inputId = "date_range_1",
                                                                                       label = "Choose Dates Between:",
-                                                                                      start = "2020-01-01"),
+                                                                                      start = "2020-12-31"),
                                                                        selectInput(inputId = "select_request",
                                                                                    label = "Select an HTTP Request Type:",
                                                                                    choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
                                                                                    selected = "GET"),
+                                                                       checkboxInput(inputId = "check",
+                                                                                     label = "Show HTTP Request Statuses",
+                                                                                     value = FALSE),
                                                                        radioButtons(inputId = "radio_1",
                                                                                     label = "Select a date format:",
                                                                                     choices = c("Year","Month","Day","Hour"),
@@ -107,10 +110,13 @@ ui <- dashboardPage(skin = "black",
                                                                 column(width = 4,
                                                                        dateRangeInput(inputId = "date_range_2",
                                                                                       label = "Choose Dates Between:",
-                                                                                      start = "2020-01-01"),
+                                                                                      start = "2020-12-31"),
                                                                        selectInput(inputId = "select_sparql",
                                                                                    label = "Select a SPARQL Query Type:",
                                                                                    choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
+                                                                       checkboxInput(inputId = "check_2",
+                                                                                     label = "Show SPARQL Query Statuses",
+                                                                                     value = FALSE),
                                                                        radioButtons(inputId = "radio_2",
                                                                                     label = "Select a date format:",
                                                                                     choices = c("Year","Month","Day","Hour"),
@@ -201,7 +207,8 @@ server <- function(input, output, session){
         cbind(year = logs$year,
               month = logs$month,
               day = logs$day, 
-              hour = logs$hour)
+              hour = logs$hour,
+              status = logs$status_code)
       
       rv$request <- requests
       
@@ -243,7 +250,8 @@ server <- function(input, output, session){
         cbind(year = logs$year,
               month = logs$month,
               day = logs$day, 
-              hour = logs$hour)
+              hour = logs$hour,
+              status = logs$status_code)
       
       rv$request <- requests
       
@@ -251,7 +259,7 @@ server <- function(input, output, session){
   })
   
   # Reactive data for http requests
-  rv_request <- eventReactive(c(input$select_request, input$radio_1, input$date_range_1), {
+  rv_request <- eventReactive(c(input$select_request, input$radio_1, input$date_range_1, input$check), {
     
     t <- tolower(input$radio_1)
     
@@ -259,38 +267,69 @@ server <- function(input, output, session){
       need(grepl(input$select_request, rv$request$method)==TRUE,
            message = "No such requests are found! Please try another type of request.")
     )
-    
-    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-    if(t == "hour"){
-      
-      # construct hourly intervals
-      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
-      hour_groups <- cut(hour_groups, "hours")
-      hour_groups <- as.character(hour_groups)
-      
-      rv$request %>% 
-        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-        filter(grepl(input$select_request, rv$request$method)) %>%
-        select(-c(asset,protocol)) %>% 
-        filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
-        group_by(hours) %>% 
-        count(hours) %>% 
-        rename(count = n, hour = hours)
+    if(input$check == FALSE){
+      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+      if(t == "hour"){
+        
+        # construct hourly intervals
+        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+        hour_groups <- cut(hour_groups, "hours")
+        hour_groups <- as.character(hour_groups)
+        
+        rv$request %>% 
+          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+          filter(grepl(input$select_request, rv$request$method)) %>%
+          select(-c(asset,protocol)) %>% 
+          filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
+          group_by(hours) %>% 
+          count(hours) %>% 
+          rename(count = n, hour = hours)
+        
+      } else {
+        
+        rv$request %>% 
+          filter(grepl(input$select_request, rv$request$method)) %>%
+          select(-c(asset,protocol)) %>% 
+          filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
+          group_by(.[t]) %>% 
+          count(.[t]) %>% 
+          rename(count = n)
+      }
       
     } else {
-      
-      rv$request %>% 
-        filter(grepl(input$select_request, rv$request$method)) %>%
-        select(-c(asset,protocol)) %>% 
-        filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
-        group_by(.[t]) %>% 
-        count(.[t]) %>% 
-        rename(count = n)
+      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+      if(t == "hour"){
+        
+        # construct hourly intervals
+        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+        hour_groups <- cut(hour_groups, "hours")
+        hour_groups <- as.character(hour_groups)
+        
+        rv$request %>% 
+          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+          filter(grepl(input$select_request, rv$request$method)) %>%
+          select(-c(asset,protocol)) %>% 
+          filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
+          group_by(hours, status) %>% 
+          count(hours) %>% 
+          rename(count = n, hour = hours)
+        
+      } else {
+        
+        rv$request %>% 
+          filter(grepl(input$select_request, rv$request$method)) %>%
+          select(-c(asset,protocol)) %>% 
+          filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
+          group_by(.[t], status) %>% 
+          count(.[t]) %>% 
+          rename(count = n)
+      }
     }
+
   })
   
   # Reactive data for sparql types
-  rv_sparql <- eventReactive(c(input$select_sparql, input$radio_2, input$date_range_2), {
+  rv_sparql <- eventReactive(c(input$select_sparql, input$radio_2, input$date_range_2, input$check_2), {
     
     t <- tolower(input$radio_2)
     
@@ -299,32 +338,62 @@ server <- function(input, output, session){
            message = "No such queries are found! Please try another type of query.")
     )
     
-    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-    if(t == "hour"){
-      
-      # construct hourly intervals
-      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
-      hour_groups <- cut(hour_groups, "hours")
-      hour_groups <- as.character(hour_groups)
-      
-      rv$request %>% 
-        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-        filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
-        select(-c(method,protocol)) %>%
-        filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
-        group_by(hours) %>% 
-        count(hours) %>% 
-        rename(count = n, hour = hours)
-      
+    if(input$check_2 == FALSE){
+      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+      if(t == "hour"){
+        
+        # construct hourly intervals
+        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+        hour_groups <- cut(hour_groups, "hours")
+        hour_groups <- as.character(hour_groups)
+        
+        rv$request %>% 
+          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          select(-c(method,protocol)) %>%
+          filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
+          group_by(hours) %>% 
+          count(hours) %>% 
+          rename(count = n, hour = hours)
+        
+      } else {
+        
+        rv$request %>% 
+          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          select(-c(method,protocol)) %>%
+          filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
+          group_by(.[t]) %>% 
+          count(.[t]) %>% 
+          rename(count = n)
+      }
     } else {
-      
-      rv$request %>% 
-        filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
-        select(-c(method,protocol)) %>%
-        filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
-        group_by(.[t]) %>% 
-        count(.[t]) %>% 
-        rename(count = n)
+      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+      if(t == "hour"){
+        
+        # construct hourly intervals
+        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+        hour_groups <- cut(hour_groups, "hours")
+        hour_groups <- as.character(hour_groups)
+        
+        rv$request %>% 
+          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          select(-c(method,protocol)) %>%
+          filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
+          group_by(hours, status) %>% 
+          count(hours) %>% 
+          rename(count = n, hour = hours)
+        
+      } else {
+        
+        rv$request %>% 
+          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          select(-c(method,protocol)) %>%
+          filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
+          group_by(.[t], status) %>% 
+          count(.[t]) %>% 
+          rename(count = n)
+      }
     }
   })
   
@@ -413,38 +482,86 @@ server <- function(input, output, session){
   
   # Interactive plot for HTTP Requests
   output$first <- renderPlotly({
- 
-    ggplotly(
-      rv_request() %>% 
-        ggplot(aes_string(x = tolower(input$radio_1), y = "count")) +
-        geom_bar(width = 0.75, stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
-        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
-        labs(title = "Number of Requests Over Days",
-             x = "Days",
-             y = "Total Requests") +
-        theme_light() +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
+
+    # return an error message if the date ranges for rv_request() is not applicable.
+    validate(
+      need(nrow(rv_request()) > 0, "There is no data between selected dates. Please select a different date range.")
+    )
+    
+    if(input$check == FALSE){
+      ggplotly(
+        rv_request() %>% 
+          ggplot(aes_string(x = tolower(input$radio_1), y = "count")) +
+          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+          labs(title = "Number of Requests Over Selected Timeframe",
+               x = "Days",
+               y = "Total Requests") +
+          theme_light() +
+          theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+    } else {
+      ggplotly(
+        rv_request() %>% 
+          ggplot(aes_string(x = tolower(input$radio_1), y = "count", fill = "status")) +
+          geom_bar(position = "dodge", width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+          facet_grid(~status) +
+          scale_color_identity() +
+          labs(title = "Number of Requests Over Selected Timeframe - Facet by Status Codes", 
+               x = "Days",
+               y = "Total Requests") +
+          theme_light() +
+          theme(axis.text.x = element_blank(),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size = 1.5),
+                strip.background = element_rect(fill = "#CCFFCC"),
+                strip.text = element_text(color = "#003300",
+                                          size = rel(1.25))), tooltip = c("y","x"))
+    }
   })
   
   # Interactive plot for SPARQL Queries
   output$second <- renderPlotly({
     
-    ggplotly(
-      rv_sparql() %>% 
-        ggplot(aes_string(x = tolower(input$radio_2), y = "count")) +
-        geom_bar(stat = "identity", col = "#CCFF99", fill = "#CCFF99")+ #use this with supplying both x,y; otherwise only x.
-        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#0000FF") +
-        labs(title = "Number of Queries Over Days",
-             x = "Days",
-             y = "Total Queries") +
-        theme_light() +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size=1.5)), tooltip = c("y","x"))
+    # return an error message if the date ranges for rv_request() is not applicable.
+    validate(
+      need(nrow(rv_sparql()) > 0, "There is no data between selected dates. Please select a different date range.")
+    )
+    
+    if(input$check_2 == FALSE){
+      ggplotly(
+        rv_sparql() %>% 
+          ggplot(aes_string(x = tolower(input$radio_2), y = "count")) +
+          geom_bar(stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+          labs(title = "Number of Queries Over Selected Timeframe",
+               x = "Days",
+               y = "Total Queries") +
+          theme_light() +
+          theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+    } else {
+      ggplotly(
+        rv_sparql() %>% 
+          ggplot(aes_string(x = tolower(input$radio_2), y = "count", fill = "status")) +
+          geom_bar(position = "dodge", stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+          facet_grid(~status) +
+          labs(title = "Number of Queries Over Selected Timeframe - Facet by Status Codes",
+               x = "Days",
+               y = "Total Queries") +
+          theme_light() +
+          theme(axis.text.x = element_blank(),
+                axis.title.x = element_blank(),
+                axis.title.y = element_text(size = 1.5),
+                strip.background = element_rect(fill = "#CCFFCC"),
+                strip.text = element_text(color = "#003300",
+                                          size = rel(1.25))), tooltip = c("y","x"))
+    }
   })
-  
 }
 
 shinyApp(ui = ui,server = server)
