@@ -10,6 +10,7 @@ library(dashboardthemes)
 library(shinyFiles)
 library(shinyWidgets)
 
+
 # function for displaying "loading" icon
 shiny_busy <- function() {
   # use &nbsp; for some alignment, if needed
@@ -84,45 +85,77 @@ ui <- dashboardPage(skin = "black",
                                                                                           textOutput("text")),
                                                                                 dataTableOutput("table")))
                                                               )),
-                                                     tabPanel(title = "Requests",
-                                                              fluidRow(
-                                                                column(width = 8,
-                                                                       plotlyOutput("first")),
-                                                                column(width = 4,
-                                                                       dateRangeInput(inputId = "date_range_1",
-                                                                                      label = "Choose Dates Between:",
-                                                                                      start = "2020-12-31"),
-                                                                       selectInput(inputId = "select_request",
-                                                                                   label = "Select an HTTP Request Type:",
-                                                                                   choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
-                                                                                   selected = "GET"),
-                                                                       checkboxInput(inputId = "check",
-                                                                                     label = "Show HTTP Request Statuses",
-                                                                                     value = FALSE),
-                                                                       radioButtons(inputId = "radio_1",
-                                                                                    label = "Select a date format:",
-                                                                                    choices = c("Year","Month","Day","Hour"),
-                                                                                    selected = "Day")))),
+                                                     tabPanel(title = "Requests", 
+                                                              fluidRow(column(width = 12,
+                                                                              tabBox(width = 12,
+                                                                                tabPanel("Requests Over Time",
+                                                                                         fluidRow(
+                                                                                           column(width = 9,
+                                                                                                  plotlyOutput("plot_Requests_1")),
+                                                                                           column(width = 3,
+                                                                                                  dateRangeInput(inputId = "date_range_Requests_1",
+                                                                                                                 label = "Choose Dates Between:",
+                                                                                                                 start = "2020-12-31"),
+                                                                                                  selectInput(inputId = "select_Requests_1",
+                                                                                                              label = "Select an HTTP Request Type:",
+                                                                                                              choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
+                                                                                                              selected = "GET"),
+                                                                                                  radioButtons(inputId = "radio_Requests_1",
+                                                                                                               label = "Select a date period:",
+                                                                                                               choices = c("Year","Month","Day","Hour"),
+                                                                                                               selected = "Day")))
+                                                                                ),
+                                                                                tabPanel("Facet with Status Codes",
+                                                                                         fluidRow(
+                                                                                           column(width = 9,
+                                                                                                  plotlyOutput("plot_Requests_2")),
+                                                                                           column(width = 3,
+                                                                                                  dateRangeInput(inputId = "date_range_Requests_2",
+                                                                                                                 label = "Choose Dates Between:",
+                                                                                                                 start = "2020-12-31"),
+                                                                                                  selectInput(inputId = "select_Requests_2",
+                                                                                                              label = "Select an HTTP Request Type:",
+                                                                                                              choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
+                                                                                                              selected = "GET"),
+                                                                                                  radioButtons(inputId = "radio_Requests_2",
+                                                                                                               label = "Select a date period:",
+                                                                                                               choices = c("Year","Month","Day","Hour"),
+                                                                                                               selected = "Day")))))))),
                                                      tabPanel(title = "Queries",
-                                                              fluidRow(
-                                                                column(width = 8,
-                                                                       plotlyOutput("second")),
-                                                                column(width = 4,
-                                                                       dateRangeInput(inputId = "date_range_2",
-                                                                                      label = "Choose Dates Between:",
-                                                                                      start = "2020-12-31"),
-                                                                       selectInput(inputId = "select_sparql",
-                                                                                   label = "Select a SPARQL Query Type:",
-                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
-                                                                       checkboxInput(inputId = "check_2",
-                                                                                     label = "Show SPARQL Query Statuses",
-                                                                                     value = FALSE),
-                                                                       radioButtons(inputId = "radio_2",
-                                                                                    label = "Select a date format:",
-                                                                                    choices = c("Year","Month","Day","Hour"),
-                                                                                    selected = "Day"))))
-                                              )
-                                            )),
+                                                              fluidRow(column(width = 12,
+                                                                              tabBox(width = 12,
+                                                                                     tabPanel("Queries Over Time",
+                                                                                              fluidRow(
+                                                                                                column(width = 9,
+                                                                                                       plotlyOutput("plot_Queries_1")),
+                                                                                                column(width = 3,
+                                                                                                       dateRangeInput(inputId = "date_range_Queries_1",
+                                                                                                                      label = "Choose Dates Between:",
+                                                                                                                      start = "2020-12-31"),
+                                                                                                       selectInput(inputId = "select_Queries_1",
+                                                                                                                   label = "Select a SPARQL Query Type:",
+                                                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
+                                                                                                       radioButtons(inputId = "radio_Queries_1",
+                                                                                                                    label = "Select a date period:",
+                                                                                                                    choices = c("Year","Month","Day","Hour"),
+                                                                                                                    selected = "Day")))
+                                                                                              
+                                                                                              ),
+                                                                                    tabPanel("Facet with Status Codes",
+                                                                                             fluidRow(
+                                                                                               column(width = 9,
+                                                                                                      plotlyOutput("plot_Queries_2")),
+                                                                                               column(width = 3,
+                                                                                                      dateRangeInput(inputId = "date_range_Queries_2",
+                                                                                                                     label = "Choose Dates Between:",
+                                                                                                                     start = "2020-12-31"),
+                                                                                                      selectInput(inputId = "select_Queries_2",
+                                                                                                                  label = "Select a SPARQL Query Type:",
+                                                                                                                  choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
+                                                                                                      radioButtons(inputId = "radio_Queries_2",
+                                                                                                                   label = "Select a date period:",
+                                                                                                                   choices = c("Year","Month","Day","Hour"),
+                                                                                                                   selected = "Day"))))))))))),
                                     tabItem(tabName = "About",
                                             wellPanel(
                                               h4("--> This application is created to visualize the number of SPARQL queries
@@ -140,7 +173,7 @@ ui <- dashboardPage(skin = "black",
 server <- function(input, output, session){
   
   # create home directory and volumes path
-  volumes <- c(Home = fs::path_home(), 
+  volumes <- c(Home = fs::path_wd(), 
                "R Installation" = R.home(), 
                getVolumes()())
   
@@ -258,45 +291,56 @@ server <- function(input, output, session){
     }
   })
   
-  # Reactive data for http requests
-  rv_request <- eventReactive(c(input$select_request, input$radio_1, input$date_range_1, input$check), {
+  # Reactive data for http requests (over time)
+  rv_Requests_1 <- eventReactive(c(input$select_Requests_1, input$radio_Requests_1, input$date_range_Requests_1), {
     
-    t <- tolower(input$radio_1)
+    t <- tolower(input$radio_Requests_1)
     
     validate(
-      need(grepl(input$select_request, rv$request$method)==TRUE,
+      need(grepl(input$select_Requests_1, rv$request$method)==TRUE,
            message = "No such requests are found! Please try another type of request.")
     )
-    if(input$check == FALSE){
-      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-      if(t == "hour"){
-        
-        # construct hourly intervals
-        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
-        hour_groups <- cut(hour_groups, "hours")
-        hour_groups <- as.character(hour_groups)
-        
-        rv$request %>% 
-          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(input$select_request, rv$request$method)) %>%
-          select(-c(asset,protocol)) %>% 
-          filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
-          group_by(hours) %>% 
-          count(hours) %>% 
-          rename(count = n, hour = hours)
-        
-      } else {
-        
-        rv$request %>% 
-          filter(grepl(input$select_request, rv$request$method)) %>%
-          select(-c(asset,protocol)) %>% 
-          filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
-          group_by(.[t]) %>% 
-          count(.[t]) %>% 
-          rename(count = n)
-      }
+    
+    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+    if(t == "hour"){
+      
+      # construct hourly intervals
+      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+      hour_groups <- cut(hour_groups, "hours")
+      hour_groups <- as.character(hour_groups)
+      
+      rv$request %>% 
+        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+        filter(grepl(input$select_Requests_1, rv$request$method)) %>%
+        select(-c(asset,protocol)) %>% 
+        filter(hour >= as.character(input$date_range_Requests_1[1]), hour <= as.character(input$date_range_Requests_1[2])) %>%
+        group_by(hours) %>% 
+        count(hours) %>% 
+        rename(count = n, hour = hours)
       
     } else {
+      
+      rv$request %>% 
+        filter(grepl(input$select_Requests_1, rv$request$method)) %>%
+        select(-c(asset,protocol)) %>% 
+        filter(.[t] >= as.character(input$date_range_Requests_1[1]), .[t] <= as.character(input$date_range_Requests_1[2])) %>% 
+        group_by(.[t]) %>% 
+        count(.[t]) %>% 
+        rename(count = n)
+    }
+    
+  })
+  
+  # Reactive data for http requests (facet with status)
+  rv_Requests_2 <- eventReactive(c(input$select_Requests_2, input$radio_Requests_2, input$date_range_Requests_2), {
+    
+    t <- tolower(input$radio_Requests_2)
+    
+    validate(
+      need(grepl(input$select_Requests_2, rv$request$method)==TRUE,
+           message = "No such requests are found! Please try another type of request.")
+    )
+    
       # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
       if(t == "hour"){
         
@@ -307,9 +351,9 @@ server <- function(input, output, session){
         
         rv$request %>% 
           mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(input$select_request, rv$request$method)) %>%
+          filter(grepl(input$select_Requests_2, rv$request$method)) %>%
           select(-c(asset,protocol)) %>% 
-          filter(hour >= as.character(input$date_range_1[1]), hour <= as.character(input$date_range_1[2])) %>%
+          filter(hour >= as.character(input$date_range_Requests_2[1]), hour <= as.character(input$date_range_Requests_2[2])) %>%
           group_by(hours, status) %>% 
           count(hours) %>% 
           rename(count = n, hour = hours)
@@ -317,28 +361,63 @@ server <- function(input, output, session){
       } else {
         
         rv$request %>% 
-          filter(grepl(input$select_request, rv$request$method)) %>%
+          filter(grepl(input$select_Requests_2, rv$request$method)) %>%
           select(-c(asset,protocol)) %>% 
-          filter(.[t] >= as.character(input$date_range_1[1]), .[t] <= as.character(input$date_range_1[2])) %>% 
+          filter(.[t] >= as.character(input$date_range_Requests_2[1]), .[t] <= as.character(input$date_range_Requests_2[2])) %>% 
           group_by(.[t], status) %>% 
           count(.[t]) %>% 
           rename(count = n)
       }
-    }
-
   })
   
-  # Reactive data for sparql types
-  rv_sparql <- eventReactive(c(input$select_sparql, input$radio_2, input$date_range_2, input$check_2), {
+  # Reactive data for sparql types (over time)
+  rv_Queries_1 <- eventReactive(c(input$select_Queries_1, input$radio_Queries_1, input$date_range_Queries_1), {
     
-    t <- tolower(input$radio_2)
+    t <- tolower(input$radio_Queries_1)
     
     validate(
-      need(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)==TRUE,
+      need(grepl(paste0("sparql.*", input$select_Queries_1), rv$request$asset)==TRUE,
+           message = "No such queries are found! Please try another type of query.")
+    )
+    # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+    if(t == "hour"){
+      
+      # construct hourly intervals
+      hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
+      hour_groups <- cut(hour_groups, "hours")
+      hour_groups <- as.character(hour_groups)
+      
+      rv$request %>% 
+        mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+        filter(grepl(paste0("sparql.*", input$select_Queries_1), rv$request$asset)) %>% 
+        select(-c(method,protocol)) %>%
+        filter(hour >= as.character(input$date_range_Queries_1[1]), hour <= as.character(input$date_range_Queries_1[2])) %>%
+        group_by(hours) %>% 
+        count(hours) %>% 
+        rename(count = n, hour = hours)
+      
+    } else {
+      
+      rv$request %>% 
+        filter(grepl(paste0("sparql.*", input$select_Queries_1), rv$request$asset)) %>% 
+        select(-c(method,protocol)) %>%
+        filter(.[t] >= as.character(input$date_range_Queries_1[1]), .[t] <= as.character(input$date_range_Queries_1[2])) %>%
+        group_by(.[t]) %>% 
+        count(.[t]) %>% 
+        rename(count = n)
+    }
+  })
+  
+  # Reactive data for sparql types (facet with status)
+  rv_Queries_2 <- eventReactive(c(input$select_Queries_2, input$radio_Queries_2, input$date_range_Queries_2), {
+    
+    t <- tolower(input$radio_Queries_2)
+    
+    validate(
+      need(grepl(paste0("sparql.*", input$select_Queries_2), rv$request$asset)==TRUE,
            message = "No such queries are found! Please try another type of query.")
     )
     
-    if(input$check_2 == FALSE){
       # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
       if(t == "hour"){
         
@@ -349,37 +428,9 @@ server <- function(input, output, session){
         
         rv$request %>% 
           mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          filter(grepl(paste0("sparql.*", input$select_Queries_2), rv$request$asset)) %>% 
           select(-c(method,protocol)) %>%
-          filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
-          group_by(hours) %>% 
-          count(hours) %>% 
-          rename(count = n, hour = hours)
-        
-      } else {
-        
-        rv$request %>% 
-          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
-          select(-c(method,protocol)) %>%
-          filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
-          group_by(.[t]) %>% 
-          count(.[t]) %>% 
-          rename(count = n)
-      }
-    } else {
-      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-      if(t == "hour"){
-        
-        # construct hourly intervals
-        hour_groups <- seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24)
-        hour_groups <- cut(hour_groups, "hours")
-        hour_groups <- as.character(hour_groups)
-        
-        rv$request %>% 
-          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
-          select(-c(method,protocol)) %>%
-          filter(hour >= as.character(input$date_range_2[1]), hour <= as.character(input$date_range_2[2])) %>%
+          filter(hour >= as.character(input$date_range_Queries_2[1]), hour <= as.character(input$date_range_Queries_2[2])) %>%
           group_by(hours, status) %>% 
           count(hours) %>% 
           rename(count = n, hour = hours)
@@ -387,46 +438,75 @@ server <- function(input, output, session){
       } else {
         
         rv$request %>% 
-          filter(grepl(paste0("sparql.*", input$select_sparql), rv$request$asset)) %>% 
+          filter(grepl(paste0("sparql.*", input$select_Queries_2), rv$request$asset)) %>% 
           select(-c(method,protocol)) %>%
-          filter(.[t] >= as.character(input$date_range_2[1]), .[t] <= as.character(input$date_range_2[2])) %>%
+          filter(.[t] >= as.character(input$date_range_Queries_2[1]), .[t] <= as.character(input$date_range_Queries_2[2])) %>%
           group_by(.[t], status) %>% 
           count(.[t]) %>% 
           rename(count = n)
       }
-    }
   })
   
-  # Update date range 1 
-  observeEvent(input$date_range_1[1], {
-    end_date = input$date_range_1[2]
+  # Update date range (Requests- requests over time tab) 
+  observeEvent(input$date_range_Requests_1[1], {
+    end_date = input$date_range_Requests_1[2]
     
     # If end date is earlier than start date, update the end date to be the same as the new start date
-    if(input$date_range_1[2] < input$date_range_1[1]){
-      end_date = input$date_range_1[1]
+    if(input$date_range_Requests_1[2] < input$date_range_Requests_1[1]){
+      end_date = input$date_range_Requests_1[1]
     }
     updateDateRangeInput(session,
-                         inputId = "date_range_1",
-                         start = input$date_range_1[1],
+                         inputId = "date_range_Requests_1",
+                         start = input$date_range_Requests_1[1],
                          end = end_date)
     
   })
   
-  # Update date range 2
-  observeEvent(input$date_range_2[1], {
-    end_date = input$date_range_2[2]
+  # Update date range (Requests- facet with status tab) 
+  observeEvent(input$date_range_Requests_2[1], {
+    end_date = input$date_range_Requests_2[2]
     
     # If end date is earlier than start date, update the end date to be the same as the new start date
-    if(input$date_range_2[2] < input$date_range_2[1]){
-      end_date = input$date_range_2[1]
+    if(input$date_range_Requests_2[2] < input$date_range_Requests_2[1]){
+      end_date = input$date_range_Requests_2[1]
     }
     updateDateRangeInput(session,
-                         inputId = "date_range_2",
-                         start = input$date_range_2[1],
+                         inputId = "date_range_Requests_2",
+                         start = input$date_range_Requests_2[1],
                          end = end_date)
     
   })
   
+  # Update date range (Queries- requests over time tab) 
+  observeEvent(input$date_range_Queries_1[1], {
+    end_date = input$date_range_Queries_1[2]
+    
+    # If end date is earlier than start date, update the end date to be the same as the new start date
+    if(input$date_range_Queries_1[2] < input$date_range_Queries_1[1]){
+      end_date = input$date_range_Queries_1[1]
+    }
+    updateDateRangeInput(session,
+                         inputId = "date_range_Queries_1",
+                         start = input$date_range_Queries_1[1],
+                         end = end_date)
+    
+  })
+  
+  # Update date range (Queries- facet with status tab) 
+  observeEvent(input$date_range_Queries_2[1], {
+    end_date = input$date_range_Queries_2[2]
+    
+    # If end date is earlier than start date, update the end date to be the same as the new start date
+    if(input$date_range_Queries_2[2] < input$date_range_Queries_2[1]){
+      end_date = input$date_range_Queries_2[1]
+    }
+    updateDateRangeInput(session,
+                         inputId = "date_range_Queries_2",
+                         start = input$date_range_Queries_2[1],
+                         end = end_date)
+    
+  })
+
   # display the name of the selected file
   output$text <- renderText({
     # if the last element of input$file is integer (it means no file is currently selected), return warning.
@@ -480,35 +560,41 @@ server <- function(input, output, session){
                               filter = "top")
   })
   
-  # Interactive plot for HTTP Requests
-  output$first <- renderPlotly({
-
+  # Interactive plot for HTTP Requests (over time)
+  output$plot_Requests_1 <- renderPlotly({
     # return an error message if the date ranges for rv_request() is not applicable.
     validate(
-      need(nrow(rv_request()) > 0, "There is no data between selected dates. Please select a different date range.")
+      need(nrow(rv_Requests_1()) > 0, "There is no data between selected dates. Please select a different date range.")
     )
     
-    if(input$check == FALSE){
+    ggplotly(
+      rv_Requests_1() %>% 
+        ggplot(aes_string(x = tolower(input$radio_Requests_1), y = "count")) +
+        geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+        labs(title = "Number of Requests Over Selected Timeframe",
+             x = "Days",
+             y = "Total Requests") +
+        theme_light() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+  })
+  
+  # Interactive plot for HTTP Requests (facet with status)
+  output$plot_Requests_2 <- renderPlotly({
+    
+    # return an error message if the date ranges for rv_request() is not applicable.
+    validate(
+      need(nrow(rv_Requests_2()) > 0, "There is no data between selected dates. Please select a different date range.")
+    )
+    
       ggplotly(
-        rv_request() %>% 
-          ggplot(aes_string(x = tolower(input$radio_1), y = "count")) +
-          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-          labs(title = "Number of Requests Over Selected Timeframe",
-               x = "Days",
-               y = "Total Requests") +
-          theme_light() +
-          theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
-    } else {
-      ggplotly(
-        rv_request() %>% 
-          ggplot(aes_string(x = tolower(input$radio_1), y = "count", fill = "status")) +
+        rv_Requests_2() %>% 
+          ggplot(aes_string(x = tolower(input$radio_Requests_2), y = "count", fill = "status")) +
           geom_bar(position = "dodge", width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
           geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-          facet_grid(~status) +
-          scale_color_identity() +
+          facet_grid(~status, scales = "free_x", space = "free_x") +
           labs(title = "Number of Requests Over Selected Timeframe - Facet by Status Codes", 
                x = "Days",
                y = "Total Requests") +
@@ -519,34 +605,39 @@ server <- function(input, output, session){
                 strip.background = element_rect(fill = "#CCFFCC"),
                 strip.text = element_text(color = "#003300",
                                           size = rel(1.25))), tooltip = c("y","x"))
-    }
   })
   
-  # Interactive plot for SPARQL Queries
-  output$second <- renderPlotly({
+  # Interactive plot for SPARQL Queries (over time)
+  output$plot_Queries_1 <- renderPlotly({
+    # return an error message if the date ranges for rv_request() is not applicable.
+    validate(
+      need(nrow(rv_Queries_1()) > 0, "There is no data between selected dates. Please select a different date range.")
+    )
+    ggplotly(
+      rv_Queries_1() %>% 
+        ggplot(aes_string(x = tolower(input$radio_Queries_1), y = "count")) +
+        geom_bar(stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
+        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+        labs(title = "Number of Queries Over Selected Timeframe",
+             x = "Days",
+             y = "Total Queries") +
+        theme_light() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+  })
+  
+  # Interactive plot for SPARQL Queries (facet with status)
+  output$plot_Queries_2 <- renderPlotly({
     
     # return an error message if the date ranges for rv_request() is not applicable.
     validate(
-      need(nrow(rv_sparql()) > 0, "There is no data between selected dates. Please select a different date range.")
+      need(nrow(rv_Queries_2()) > 0, "There is no data between selected dates. Please select a different date range.")
     )
     
-    if(input$check_2 == FALSE){
       ggplotly(
-        rv_sparql() %>% 
-          ggplot(aes_string(x = tolower(input$radio_2), y = "count")) +
-          geom_bar(stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-          labs(title = "Number of Queries Over Selected Timeframe",
-               x = "Days",
-               y = "Total Queries") +
-          theme_light() +
-          theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
-    } else {
-      ggplotly(
-        rv_sparql() %>% 
-          ggplot(aes_string(x = tolower(input$radio_2), y = "count", fill = "status")) +
+        rv_Queries_2() %>% 
+          ggplot(aes_string(x = tolower(input$radio_Queries_2), y = "count", fill = "status")) +
           geom_bar(position = "dodge", stat = "identity", col = "#99FF99", fill = "#99FF99")+ #use this with supplying both x,y; otherwise only x.
           geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
           facet_grid(~status) +
@@ -560,7 +651,6 @@ server <- function(input, output, session){
                 strip.background = element_rect(fill = "#CCFFCC"),
                 strip.text = element_text(color = "#003300",
                                           size = rel(1.25))), tooltip = c("y","x"))
-    }
   })
 }
 
