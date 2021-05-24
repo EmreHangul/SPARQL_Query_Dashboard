@@ -9,6 +9,7 @@ library(plotly)
 library(dashboardthemes)
 library(shinyFiles)
 library(shinyWidgets)
+library(rgeolocate)
 
 
 # function for displaying "loading" icon
@@ -31,8 +32,7 @@ ui <- dashboardPage(skin = "black",
                     dashboardSidebar(
                       sidebarMenu(
                         menuItem(tabName = "Home", text = "Home"),
-                        menuItem(tabName = "About", text = "About the App"),
-                        menuItem(tabName = "Guide", text = "Manual Guide")
+                        menuItem(tabName = "About", text = "About the App")
                       ),
                       sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search")
                     ),
@@ -184,7 +184,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                   radioButtons(inputId = "radio_Requests_4",
                                                                                                                label = "Select a date period:",
                                                                                                                choices = c("Year","Month","Day","Hour"),
-                                                                                                               selected = "Day")))))))),
+                                                                                                               selected = "Day"))),
+                                                                                         fluidRow(dataTableOutput("table_Requests_4"))))))),
                                                      tabPanel(title = "Queries",
                                                               fluidRow(column(width = 12,
                                                                               tabBox(width = 12,
@@ -281,14 +282,12 @@ ui <- dashboardPage(skin = "black",
                                                                                                       radioButtons(inputId = "radio_Queries_4",
                                                                                                                    label = "Select a date period:",
                                                                                                                    choices = c("Year","Month","Day","Hour"),
-                                                                                                                   selected = "Day"))))))))))),
+                                                                                                                   selected = "Day"))),
+                                                                                             fluidRow(dataTableOutput("table_Queries_4")))))))))),
                                     tabItem(tabName = "About",
                                             wellPanel(
                                               h4("--> This application is created to visualize the number of SPARQL queries
                  made by the users throughout....."))
-                                    ),
-                                    tabItem(tabName = "Guide",
-                                            h2("this will be a manual guide.")
                                     )
                                   )
                     )
@@ -1086,6 +1085,22 @@ server <- function(input, output, session){
                                 scrollX = TRUE,
                                 columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
                               filter = "top")
+  })
+  
+  # show the location information of the ip addresses
+  output$table_Requests_4 <- renderDataTable({
+    ip_api(input$selectize_Requests_4) %>% datatable(rownames = FALSE,
+                                                     options = list(
+                                                       autoWidth = TRUE,
+                                                       lengthChange = FALSE,
+                                                       scrollX = TRUE))
+  })
+  output$table_Queries_4 <- renderDataTable({
+    ip_api(input$selectize_Queries_4) %>% datatable(rownames = FALSE,
+                                                    options = list(
+                                                      autoWidth = TRUE,
+                                                      lengthChange = FALSE,
+                                                      scrollX = TRUE))
   })
   
   # Interactive plot for HTTP Requests (Over time)
