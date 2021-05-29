@@ -10,6 +10,7 @@ library(dashboardthemes)
 library(shinyFiles)
 library(shinyWidgets)
 library(rgeolocate)
+library(stringr)
 
 
 # function for displaying "loading" icon
@@ -156,7 +157,9 @@ ui <- dashboardPage(skin = "black",
                                                                                 tabPanel("IP Addresses",
                                                                                          fluidRow(
                                                                                            column(width = 9,
-                                                                                                  plotlyOutput("plot_Requests_4")),
+                                                                                                  textOutput("textsa"),
+                                                                                                  plotlyOutput("plot_Requests_4"),
+                                                                                                  dataTableOutput("table_Requests_4")),
                                                                                            column(width = 3, 
                                                                                                   wellPanel(fluidRow(column(width = 12, 
                                                                                                                             selectizeInput(inputId = "selectize_Requests_4",
@@ -173,7 +176,11 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                          label = "See top (n) IP Addresses:",
                                                                                                                                          value = 1,
                                                                                                                                          min = 1,
-                                                                                                                                         max = NA)))),
+                                                                                                                                         max = NA))),
+                                                                                                            fluidRow(column(width = 12,
+                                                                                                                            checkboxInput(inputId = "checkbox_Requests_4",
+                                                                                                                                         label = "Aggregate IPs by Companies)",
+                                                                                                                                         value = FALSE)))),
                                                                                                   dateRangeInput(inputId = "date_range_Requests_4",
                                                                                                                  label = "Choose Dates Between:",
                                                                                                                  start = "2020-12-31"),
@@ -184,8 +191,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                   radioButtons(inputId = "radio_Requests_4",
                                                                                                                label = "Select a date period:",
                                                                                                                choices = c("Year","Month","Day","Hour"),
-                                                                                                               selected = "Day"))),
-                                                                                         fluidRow(dataTableOutput("table_Requests_4"))))))),
+                                                                                                               selected = "Day")))))))),
                                                      tabPanel(title = "Queries",
                                                               fluidRow(column(width = 12,
                                                                               tabBox(width = 12,
@@ -255,7 +261,8 @@ ui <- dashboardPage(skin = "black",
                                                                                     tabPanel("IP Addresses",
                                                                                              fluidRow(
                                                                                                column(width = 9,
-                                                                                                      plotlyOutput("plot_Queries_4")),
+                                                                                                      plotlyOutput("plot_Queries_4"),
+                                                                                                      dataTableOutput("table_Queries_4")),
                                                                                                column(width = 3,
                                                                                                       wellPanel(fluidRow(column(width = 12, 
                                                                                                                                 selectizeInput(inputId = "selectize_Queries_4",
@@ -272,7 +279,11 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                              label = "See top (n) IP Addresses:",
                                                                                                                                              value = 1,
                                                                                                                                              min = 1,
-                                                                                                                                             max = NA)))),
+                                                                                                                                             max = NA))),
+                                                                                                                fluidRow(column(width = 12,
+                                                                                                                                checkboxInput(inputId = "checkbox_Queries_4",
+                                                                                                                                              label = "Aggregate IPs by Companies",
+                                                                                                                                              value = FALSE)))),
                                                                                                       dateRangeInput(inputId = "date_range_Queries_4",
                                                                                                                      label = "Choose Dates Between:",
                                                                                                                      start = "2020-12-31"),
@@ -282,8 +293,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                       radioButtons(inputId = "radio_Queries_4",
                                                                                                                    label = "Select a date period:",
                                                                                                                    choices = c("Year","Month","Day","Hour"),
-                                                                                                                   selected = "Day"))),
-                                                                                             fluidRow(dataTableOutput("table_Queries_4")))))))))),
+                                                                                                                   selected = "Day"))))))))))),
                                     tabItem(tabName = "About",
                                             wellPanel(
                                               h4("--> This application is created to visualize the number of SPARQL queries
@@ -305,12 +315,14 @@ server <- function(input, output, session){
   # choose file from the system
   shinyFileChoose(input, "file", 
                   roots = volumes, 
-                  session = session)
+                  session = session,
+                  filetypes = c("log", "gz"))
   
   # choose a directory containing files
   shinyDirChoose(input, "dir",
                  roots = volumes,
-                 session = session)
+                 session = session,
+                 filetypes = c("log", "gz"))
   
   # update conditional panel condition when directory button is clicked
   output$conddir <- reactive({
@@ -635,35 +647,76 @@ server <- function(input, output, session){
   })
   
   # Reactive data for http requests (IP Addresses)
-  rv_Requests_4 <- eventReactive(c(input$select_Requests_4, input$radio_Requests_4, input$date_range_Requests_4, input$selectize_Requests_4, input$numeric_Requests_4),{
-    
+  rv_Requests_4 <- eventReactive(c(input$select_Requests_4, input$radio_Requests_4, input$date_range_Requests_4, input$selectize_Requests_4, input$numeric_Requests_4, input$checkbox_Requests_4),{
+      
     t <- tolower(input$radio_Requests_4)
     
-    # return an error message if the solicited requests are not available.
-    validate(
-      need(grepl(input$select_Requests_4, rv$request$method)==TRUE,
-           message = "No such requests are found! Please try another type of request.")
-    )
-    
-    if(input$selectize_Requests_4 == ""){
+    if(input$checkbox_Requests_4 == TRUE){
       
+      # return an error message if the solicited requests are not available.
       validate(
-        need(input$numeric_Requests_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        need(grepl(input$select_Requests_4, rv$request$method)==TRUE,
+             message = "No such requests are found! Please try another type of request.")
       )
       
-      # create data frame with the top 10 most/least used ip addresses (also including the mean)
-      rv$request %>% 
-        filter(grepl(input$select_Requests_4, rv$request$method)) %>%
-        select(-c(asset,protocol, status, user_agent)) %>%
-        filter(!is.na(ip_address)) %>% 
-        group_by(ip_address) %>% 
-        count(ip_address) %>% 
-        rename(count = n) %>% 
-        as.data.frame(.) %>% 
-        arrange(desc(count)) %>% 
-        rbind(head(., input$numeric_Requests_4), data.frame(ip_address = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Requests_4)) %>% 
-        tail(2 * input$numeric_Requests_4 + 1)
-      
+      if(input$selectize_Requests_4 == ""){
+        
+        validate(
+          need(input$numeric_Requests_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        )
+        
+        # create data frame with the top 10 most/least used ip addresses(companies) (also including the mean)
+        rv$request %>% 
+          filter(grepl(input$select_Requests_4, rv$request$method)) %>%
+          select(-c(asset,protocol, status, user_agent)) %>%
+          filter(!is.na(ip_address)) %>%
+          group_by(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+          count(ip_companies) %>% 
+          rename(count = n) %>% 
+          as.data.frame(.) %>% 
+          arrange(desc(count)) %>% 
+          rbind(head(., input$numeric_Requests_4), data.frame(ip_companies = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Requests_4)) %>% 
+          tail(2 * input$numeric_Requests_4 + 1)
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(grepl(input$select_Requests_4, rv$request$method)==TRUE,
+               message = "No such requests are found! Please try another type of request.")
+        )
+        
+        # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+        if(t == "hour"){
+          
+          # construct hourly intervals
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          
+          rv$request %>%
+            mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+            filter(ip_companies == str_sub(input$selectize_Requests_4, end = -2)) %>% 
+            mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+            filter(grepl(input$select_Requests_4, .$method)) %>%
+            select(-c(asset,protocol, status, user_agent)) %>% 
+            filter(hour >= as.character(input$date_range_Requests_4[1]), hour <= as.character(input$date_range_Requests_4[2])) %>%
+            group_by(hours) %>% 
+            count(hours) %>% 
+            rename(count = n, hour = hours)
+          
+        } else {
+          
+          rv$request %>%
+            mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+            filter(ip_companies == str_sub(input$selectize_Requests_4, end = -2)) %>% 
+            filter(grepl(input$select_Requests_4, .$method)) %>%
+            select(-c(asset,protocol, status, user_agent)) %>% 
+            filter(.[t] >= as.character(input$date_range_Requests_4[1]), .[t] <= as.character(input$date_range_Requests_4[2])) %>% 
+            group_by(.[t]) %>% 
+            count(.[t]) %>% 
+            rename(count = n)
+        }
+      }
+    
     } else {
       
       # return an error message if the solicited requests are not available.
@@ -672,32 +725,60 @@ server <- function(input, output, session){
              message = "No such requests are found! Please try another type of request.")
       )
       
-      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-      if(t == "hour"){
+      if(input$selectize_Requests_4 == ""){
         
-        # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        validate(
+          need(input$numeric_Requests_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        )
         
-        rv$request %>%
-          filter(ip_address == input$selectize_Requests_4) %>% 
-          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(input$select_Requests_4, .$method)) %>%
-          select(-c(asset,protocol, status, user_agent)) %>% 
-          filter(hour >= as.character(input$date_range_Requests_4[1]), hour <= as.character(input$date_range_Requests_4[2])) %>%
-          group_by(hours) %>% 
-          count(hours) %>% 
-          rename(count = n, hour = hours)
+        # create data frame with the top 10 most/least used ip addresses (also including the mean)
+        rv$request %>% 
+          filter(grepl(input$select_Requests_4, rv$request$method)) %>%
+          select(-c(asset,protocol, status, user_agent)) %>%
+          filter(!is.na(ip_address)) %>%
+          group_by(ip_address) %>% 
+          count(ip_address) %>% 
+          rename(count = n) %>% 
+          as.data.frame(.) %>% 
+          arrange(desc(count)) %>% 
+          rbind(head(., input$numeric_Requests_4), data.frame(ip_address = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Requests_4)) %>% 
+          tail(2 * input$numeric_Requests_4 + 1)
         
       } else {
         
-        rv$request %>%
-          filter(ip_address == input$selectize_Requests_4) %>% 
-          filter(grepl(input$select_Requests_4, .$method)) %>%
-          select(-c(asset,protocol, status, user_agent)) %>% 
-          filter(.[t] >= as.character(input$date_range_Requests_4[1]), .[t] <= as.character(input$date_range_Requests_4[2])) %>% 
-          group_by(.[t]) %>% 
-          count(.[t]) %>% 
-          rename(count = n)
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(grepl(input$select_Requests_4, rv$request$method)==TRUE,
+               message = "No such requests are found! Please try another type of request.")
+        )
+        
+        # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+        if(t == "hour"){
+          
+          # construct hourly intervals
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          
+          rv$request %>%
+            filter(ip_address == input$selectize_Requests_4) %>% 
+            mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+            filter(grepl(input$select_Requests_4, .$method)) %>%
+            select(-c(asset,protocol, status, user_agent)) %>% 
+            filter(hour >= as.character(input$date_range_Requests_4[1]), hour <= as.character(input$date_range_Requests_4[2])) %>%
+            group_by(hours) %>% 
+            count(hours) %>% 
+            rename(count = n, hour = hours)
+          
+        } else {
+          
+          rv$request %>%
+            filter(ip_address == input$selectize_Requests_4) %>% 
+            filter(grepl(input$select_Requests_4, .$method)) %>%
+            select(-c(asset,protocol, status, user_agent)) %>% 
+            filter(.[t] >= as.character(input$date_range_Requests_4[1]), .[t] <= as.character(input$date_range_Requests_4[2])) %>% 
+            group_by(.[t]) %>% 
+            count(.[t]) %>% 
+            rename(count = n)
+        }
       }
     }
   })
@@ -847,35 +928,75 @@ server <- function(input, output, session){
   })
   
   # Reactive data for sparql types (IP Addresses)
-  rv_Queries_4 <- eventReactive(c(input$select_Queries_4, input$radio_Queries_4, input$date_range_Queries_4, input$selectize_Queries_4, input$numeric_Queries_4),{
+  rv_Queries_4 <- eventReactive(c(input$select_Queries_4, input$radio_Queries_4, input$date_range_Queries_4, input$selectize_Queries_4, input$numeric_Queries_4, input$checkbox_Queries_4),{
     
     t <- tolower(input$radio_Queries_4)
     
-    # return an error message if the solicited requests are not available.
-    validate(
-      need(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)==TRUE,
-           message = "No such queries are found! Please try another type of query.")
-    )
-    
-    if(input$selectize_Queries_4 == ""){
+    if(input$checkbox_Queries_4 == TRUE){
       
+      # return an error message if the solicited requests are not available.
       validate(
-        need(input$numeric_Queries_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        need(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)==TRUE,
+             message = "No such queries are found! Please try another type of query.")
       )
       
-      # create data frame with the top 10 most/least used ip addresses (also including the mean)
-      rv$request %>% 
-        filter(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)) %>%
-        select(-c(method,protocol, status, user_agent)) %>%
-        filter(!is.na(ip_address)) %>% 
-        group_by(ip_address) %>% 
-        count(ip_address) %>% 
-        rename(count = n) %>% 
-        as.data.frame(.) %>% 
-        arrange(desc(count)) %>% 
-        rbind(head(., input$numeric_Queries_4), data.frame(ip_address = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Queries_4)) %>% 
-        tail(2 * input$numeric_Queries_4 + 1)
-      
+      if(input$selectize_Queries_4 == ""){
+        
+        validate(
+          need(input$numeric_Queries_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        )
+        
+        # create data frame with the top 10 most/least used ip addresses (also including the mean)
+        rv$request %>% 
+          filter(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)) %>%
+          select(-c(method,protocol, status, user_agent)) %>%
+          filter(!is.na(ip_address)) %>% 
+          group_by(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+          count(ip_companies) %>% 
+          rename(count = n) %>% 
+          as.data.frame(.) %>% 
+          arrange(desc(count)) %>% 
+          rbind(head(., input$numeric_Queries_4), data.frame(ip_companies = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Queries_4)) %>% 
+          tail(2 * input$numeric_Queries_4 + 1)
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)==TRUE,
+               message = "No such queries are found! Please try another type of query.")
+        )
+        
+        # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+        if(t == "hour"){
+          
+          # construct hourly intervals
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          
+          rv$request %>%
+            mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+            filter(ip_companies == str_sub(input$selectize_Queries_4, end = -2)) %>% 
+            mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+            filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
+            select(-c(method,protocol, status, user_agent)) %>% 
+            filter(hour >= as.character(input$date_range_Queries_4[1]), hour <= as.character(input$date_range_Queries_4[2])) %>%
+            group_by(hours) %>% 
+            count(hours) %>% 
+            rename(count = n, hour = hours)
+          
+        } else {
+          
+          rv$request %>%
+            mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
+            filter(ip_companies == str_sub(input$selectize_Queries_4, end = -2)) %>% 
+            filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
+            select(-c(method,protocol, status, user_agent)) %>% 
+            filter(.[t] >= as.character(input$date_range_Queries_4[1]), .[t] <= as.character(input$date_range_Queries_4[2])) %>% 
+            group_by(.[t]) %>% 
+            count(.[t]) %>% 
+            rename(count = n)
+        }
+      }
     } else {
       
       # return an error message if the solicited requests are not available.
@@ -884,33 +1005,96 @@ server <- function(input, output, session){
              message = "No such queries are found! Please try another type of query.")
       )
       
-      # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
-      if(t == "hour"){
+      if(input$selectize_Queries_4 == ""){
         
-        # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        validate(
+          need(input$numeric_Queries_4 != "", "Please enter a number to display top (n) most used User-Agents.")
+        )
         
-        rv$request %>%
-          filter(ip_address == input$selectize_Queries_4) %>% 
-          mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
-          filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
-          select(-c(method,protocol, status, user_agent)) %>% 
-          filter(hour >= as.character(input$date_range_Queries_4[1]), hour <= as.character(input$date_range_Queries_4[2])) %>%
-          group_by(hours) %>% 
-          count(hours) %>% 
-          rename(count = n, hour = hours)
+        # create data frame with the top 10 most/least used ip addresses (also including the mean)
+        rv$request %>% 
+          filter(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)) %>%
+          select(-c(method,protocol, status, user_agent)) %>%
+          filter(!is.na(ip_address)) %>% 
+          group_by(ip_address) %>% 
+          count(ip_address) %>% 
+          rename(count = n) %>% 
+          as.data.frame(.) %>% 
+          arrange(desc(count)) %>% 
+          rbind(head(., input$numeric_Queries_4), data.frame(ip_address = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Queries_4)) %>% 
+          tail(2 * input$numeric_Queries_4 + 1)
         
       } else {
         
-        rv$request %>%
-          filter(ip_address == input$selectize_Queries_4) %>% 
-          filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
-          select(-c(method,protocol, status, user_agent)) %>% 
-          filter(.[t] >= as.character(input$date_range_Queries_4[1]), .[t] <= as.character(input$date_range_Queries_4[2])) %>% 
-          group_by(.[t]) %>% 
-          count(.[t]) %>% 
-          rename(count = n)
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(grepl(paste0("sparql.*", input$select_Queries_4), rv$request$asset)==TRUE,
+               message = "No such queries are found! Please try another type of query.")
+        )
+        
+        # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
+        if(t == "hour"){
+          
+          # construct hourly intervals
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          
+          rv$request %>%
+            filter(ip_address == input$selectize_Queries_4) %>% 
+            mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
+            filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
+            select(-c(method,protocol, status, user_agent)) %>% 
+            filter(hour >= as.character(input$date_range_Queries_4[1]), hour <= as.character(input$date_range_Queries_4[2])) %>%
+            group_by(hours) %>% 
+            count(hours) %>% 
+            rename(count = n, hour = hours)
+          
+        } else {
+          
+          rv$request %>%
+            filter(ip_address == input$selectize_Queries_4) %>% 
+            filter(grepl(paste0("sparql.*", input$select_Queries_4), .$asset)) %>%
+            select(-c(method,protocol, status, user_agent)) %>% 
+            filter(.[t] >= as.character(input$date_range_Queries_4[1]), .[t] <= as.character(input$date_range_Queries_4[2])) %>% 
+            group_by(.[t]) %>% 
+            count(.[t]) %>% 
+            rename(count = n)
+        }
       }
+    }
+  })
+  
+  # Update the selectize inputs to list either the whole IP addresses or company IPs
+  observe({
+    if(input$checkbox_Requests_4 == FALSE){
+      updateSelectizeInput(session,
+                           inputId = "selectize_Requests_4",
+                           choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
+                           server = TRUE)
+    } else{
+      updateSelectizeInput(session,
+                           inputId = "selectize_Requests_4",
+                           choices = paste0(str_extract(levels(as.factor(rv$request$ip_address)),
+                                                        pattern = "\\d+\\.\\d+\\.\\d+\\."),  "*"),
+                           selected = "",
+                           server = TRUE)
+    }
+  })
+  
+  observe({
+    if(input$checkbox_Queries_4 == FALSE){
+      updateSelectizeInput(session,
+                           inputId = "selectize_Queries_4",
+                           choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
+                           server = TRUE)
+    } else{
+      updateSelectizeInput(session,
+                           inputId = "selectize_Queries_4",
+                           choices = paste0(str_extract(levels(as.factor(rv$request$ip_address)),
+                                                        pattern = "\\d+\\.\\d+\\.\\d+\\."),  "*"),
+                           selected = "",
+                           server = TRUE)
     }
   })
   
@@ -1205,51 +1389,101 @@ server <- function(input, output, session){
   # Interactive plot for HTTP Requests (IP Addresses)
   output$plot_Requests_4 <- renderPlotly({
     
-    # return an error message if the date ranges for rv_Requests_4() is not applicable.
-    validate(
-      need(nrow(rv_Requests_4()) > 0 | input$selectize_Requests_4 != "", "There is no data between selected dates. Please select a different date range.")
-    )
-    
-    if(input$selectize_Requests_4 == ""){
+    if(input$checkbox_Requests_4 == TRUE){
       
-      # index of the data point "mean"
-      index <- which(rv_Requests_4()$ip_address == "mean")
-      
-      ggplotly(
-        rv_Requests_4() %>% 
-          ggplot(aes(x = reorder(ip_address, count), y = count)) +
-          geom_bar(aes(text = paste("IP Address' Name: ", ip_address, "\nRequest Count: ", count)),
-                   width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
-          annotate("text", label = "Mean", x = rv_Requests_4()$ip_address[index], y = -2*(rv_Requests_4()$count[index]), size = 4.5, colour = "blue") +
-          labs(title = "IP Addresses with the Most / the Least # of Requests",
-               x = "IP Addresses",
-               y = "Number of Requests") +
-          theme_light() +
-          theme(axis.text.x = element_blank(),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 13)), tooltip = "text")
-      
-    } else {
-      
-      # return an error message if the solicited requests are not available.
+      # return an error message if the date ranges for rv_Requests_4() is not applicable.
       validate(
-        need(nrow(rv_Requests_4()) > 0, "No such requests are found! Please try another type of request..")
+        need(nrow(rv_Requests_4()) > 0 | input$selectize_Requests_4 != "", "There is no data between selected dates. Please select a different date range.")
       )
       
-      ggplotly(
-        rv_Requests_4() %>% 
-          ggplot(aes_string(x = tolower(input$radio_Requests_4), y = "count")) +
-          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-          labs(title = "Number of Requests Over Selected Timeframe",
-               x = "Days",
-               y = "Total Requests") +
-          theme_light() +
-          theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+      if(input$selectize_Requests_4 == ""){
+        
+        # index of the data point "mean"
+        index <- which(rv_Requests_4()$ip_companies == "mean")
+        
+        ggplotly(
+          rv_Requests_4() %>% 
+            ggplot(aes(x = reorder(ip_companies, count), y = count)) +
+            geom_bar(aes(text = paste("Company IP Address': ", ip_companies, "\nRequest Count: ", count)),
+                     width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
+            annotate("text", label = "Mean", x = rv_Requests_4()$ip_companies[index], y = -2*(rv_Requests_4()$count[index]), size = 4.5, colour = "blue") +
+            labs(title = "Company IP Addresses with the Most / the Least # of Requests",
+                 x = "Company IP Addresses",
+                 y = "Number of Requests") +
+            theme_light() +
+            theme(axis.text.x = element_blank(),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 13)), tooltip = "text")
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(nrow(rv_Requests_4()) > 0, "No such requests are found! Please try another type of request..")
+        )
+        
+        ggplotly(
+          rv_Requests_4() %>% 
+            ggplot(aes_string(x = tolower(input$radio_Requests_4), y = "count")) +
+            geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+            labs(title = "Number of Requests Over Selected Timeframe",
+                 x = "Days",
+                 y = "Total Requests") +
+            theme_light() +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+        
+      }
+    } else {
       
+      # return an error message if the date ranges for rv_Requests_4() is not applicable.
+      validate(
+        need(nrow(rv_Requests_4()) > 0 | input$selectize_Requests_4 != "", "There is no data between selected dates. Please select a different date range.")
+      )
+      
+      if(input$selectize_Requests_4 == ""){
+        
+        # index of the data point "mean"
+        index <- which(rv_Requests_4()$ip_address == "mean")
+        
+        ggplotly(
+          rv_Requests_4() %>% 
+            ggplot(aes(x = reorder(ip_address, count), y = count)) +
+            geom_bar(aes(text = paste("IP Address': ", ip_address, "\nRequest Count: ", count)),
+                     width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
+            annotate("text", label = "Mean", x = rv_Requests_4()$ip_address[index], y = -2*(rv_Requests_4()$count[index]), size = 4.5, colour = "blue") +
+            labs(title = "IP Addresses with the Most / the Least # of Requests",
+                 x = "IP Addresses",
+                 y = "Number of Requests") +
+            theme_light() +
+            theme(axis.text.x = element_blank(),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 13)), tooltip = "text")
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(nrow(rv_Requests_4()) > 0, "No such requests are found! Please try another type of request..")
+        )
+        
+        ggplotly(
+          rv_Requests_4() %>% 
+            ggplot(aes_string(x = tolower(input$radio_Requests_4), y = "count")) +
+            geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+            labs(title = "Number of Requests Over Selected Timeframe",
+                 x = "Days",
+                 y = "Total Requests") +
+            theme_light() +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+      }
     }
   })
   
@@ -1353,51 +1587,101 @@ server <- function(input, output, session){
   # Interactive plot for SPARQL Queries (IP Addresses)
   output$plot_Queries_4 <- renderPlotly({
     
-    # return an error message if the date ranges for rv_Queries_4() is not applicable.
-    validate(
-      need(nrow(rv_Queries_4()) > 0 | input$selectize_Queries_4 != "", "There is no data between selected dates. Please select a different date range.")
-    )
-    
-    if(input$selectize_Queries_4 == ""){
+    if(input$checkbox_Queries_4 == TRUE) {
       
-      # index of the data point "mean"
-      index <- which(rv_Queries_4()$ip_address == "mean")
-      
-      ggplotly(
-        rv_Queries_4() %>% 
-          ggplot(aes(x = reorder(ip_address, count), y = count)) +
-          geom_bar(aes(text = paste("IP Address' Name: ", ip_address, "\nQuery Count: ", count)),
-                   width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99") + 
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
-          annotate("text", label = "Mean", x = rv_Queries_4()$ip_address[index], y = -2*(rv_Queries_4()$count[index]), size = 4.5, colour = "blue") +
-          labs(title = "IP Addresses with the Most / the Least # of Queries",
-               x = "IP Addresses",
-               y = "Number of Queries") +
-          theme_light() +
-          theme(axis.text.x = element_blank(),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 13)), tooltip = "text")
-      
-    } else {
-      
-      # return an error message if the solicited requests are not available.
+      # return an error message if the date ranges for rv_Queries_4() is not applicable.
       validate(
-        need(nrow(rv_Queries_4()) > 0, "No such queries are found! Please try another type of a query.")
+        need(nrow(rv_Queries_4()) > 0 | input$selectize_Queries_4 != "", "There is no data between selected dates. Please select a different date range.")
       )
       
-      ggplotly(
-        rv_Queries_4() %>% 
-          ggplot(aes_string(x = tolower(input$radio_Queries_4), y = "count")) +
-          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
-          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-          labs(title = "Number of Queries Over Selected Timeframe",
-               x = "Days",
-               y = "Total Queries") +
-          theme_light() +
-          theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+      if(input$selectize_Queries_4 == ""){
+        
+        # index of the data point "mean"
+        index <- which(rv_Queries_4()$ip_companies == "mean")
+        
+        ggplotly(
+          rv_Queries_4() %>% 
+            ggplot(aes(x = reorder(ip_companies, count), y = count)) +
+            geom_bar(aes(text = paste("Company IP Address: ", ip_companies, "\nQuery Count: ", count)),
+                     width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99") + 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
+            annotate("text", label = "Mean", x = rv_Queries_4()$ip_companies[index], y = -2*(rv_Queries_4()$count[index]), size = 4.5, colour = "blue") +
+            labs(title = "Company IP Addresses with the Most / the Least # of Queries",
+                 x = "Company IP Addresses",
+                 y = "Number of Queries") +
+            theme_light() +
+            theme(axis.text.x = element_blank(),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 13)), tooltip = "text")
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(nrow(rv_Queries_4()) > 0, "No such queries are found! Please try another type of a query.")
+        )
+        
+        ggplotly(
+          rv_Queries_4() %>% 
+            ggplot(aes_string(x = tolower(input$radio_Queries_4), y = "count")) +
+            geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+            labs(title = "Number of Queries Over Selected Timeframe",
+                 x = "Days",
+                 y = "Total Queries") +
+            theme_light() +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+        
+      }
+    } else {
+      # return an error message if the date ranges for rv_Queries_4() is not applicable.
+      validate(
+        need(nrow(rv_Queries_4()) > 0 | input$selectize_Queries_4 != "", "There is no data between selected dates. Please select a different date range.")
+      )
       
+      if(input$selectize_Queries_4 == ""){
+        
+        # index of the data point "mean"
+        index <- which(rv_Queries_4()$ip_address == "mean")
+        
+        ggplotly(
+          rv_Queries_4() %>% 
+            ggplot(aes(x = reorder(ip_address, count), y = count)) +
+            geom_bar(aes(text = paste("IP Address' Name: ", ip_address, "\nQuery Count: ", count)),
+                     width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99") + 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"),  col = "#003300", check_overlap = TRUE) +
+            annotate("text", label = "Mean", x = rv_Queries_4()$ip_address[index], y = -2*(rv_Queries_4()$count[index]), size = 4.5, colour = "blue") +
+            labs(title = "IP Addresses with the Most / the Least # of Queries",
+                 x = "IP Addresses",
+                 y = "Number of Queries") +
+            theme_light() +
+            theme(axis.text.x = element_blank(),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 13)), tooltip = "text")
+        
+      } else {
+        
+        # return an error message if the solicited requests are not available.
+        validate(
+          need(nrow(rv_Queries_4()) > 0, "No such queries are found! Please try another type of a query.")
+        )
+        
+        ggplotly(
+          rv_Queries_4() %>% 
+            ggplot(aes_string(x = tolower(input$radio_Queries_4), y = "count")) +
+            geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+            geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+            labs(title = "Number of Queries Over Selected Timeframe",
+                 x = "Days",
+                 y = "Total Queries") +
+            theme_light() +
+            theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                  axis.title.x = element_blank(),
+                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+        
+      }
     }
   })
 }
