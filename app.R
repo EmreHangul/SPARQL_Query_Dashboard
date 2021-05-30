@@ -11,6 +11,7 @@ library(shinyFiles)
 library(shinyWidgets)
 library(rgeolocate)
 library(stringr)
+library(lubridate)
 
 
 # function for displaying "loading" icon
@@ -96,7 +97,8 @@ ui <- dashboardPage(skin = "black",
                                                                                            column(width = 3,
                                                                                                   dateRangeInput(inputId = "date_range_Requests_1",
                                                                                                                  label = "Choose Dates Between:",
-                                                                                                                 start = "2020-12-31"),
+                                                                                                                 start = "2020-12-31",
+                                                                                                                 end = "2021-12-31"),
                                                                                                   selectInput(inputId = "select_Requests_1",
                                                                                                               label = "Select an HTTP Request Type:",
                                                                                                               choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
@@ -113,7 +115,8 @@ ui <- dashboardPage(skin = "black",
                                                                                            column(width = 3,
                                                                                                   dateRangeInput(inputId = "date_range_Requests_2",
                                                                                                                  label = "Choose Dates Between:",
-                                                                                                                 start = "2020-12-31"),
+                                                                                                                 start = "2020-12-31",
+                                                                                                                 end = "2021-12-31"),
                                                                                                   selectInput(inputId = "select_Requests_2",
                                                                                                               label = "Select an HTTP Request Type:",
                                                                                                               choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
@@ -145,7 +148,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                          max = NA)))),
                                                                                                   dateRangeInput(inputId = "date_range_Requests_3",
                                                                                                                  label = "Choose Dates Between:",
-                                                                                                                 start = "2020-12-31"),
+                                                                                                                 start = "2020-12-31",
+                                                                                                                 end = "2021-12-31"),
                                                                                                   selectInput(inputId = "select_Requests_3",
                                                                                                               label = "Select an HTTP Request Type:",
                                                                                                               choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
@@ -183,7 +187,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                          value = FALSE)))),
                                                                                                   dateRangeInput(inputId = "date_range_Requests_4",
                                                                                                                  label = "Choose Dates Between:",
-                                                                                                                 start = "2020-12-31"),
+                                                                                                                 start = "2020-12-31",
+                                                                                                                 end = "2021-12-31"),
                                                                                                   selectInput(inputId = "select_Requests_4",
                                                                                                               label = "Select an HTTP Request Type:",
                                                                                                               choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
@@ -202,7 +207,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                 column(width = 3,
                                                                                                        dateRangeInput(inputId = "date_range_Queries_1",
                                                                                                                       label = "Choose Dates Between:",
-                                                                                                                      start = "2020-12-31"),
+                                                                                                                      start = "2020-12-31",
+                                                                                                                      end = "2021-12-31"),
                                                                                                        selectInput(inputId = "select_Queries_1",
                                                                                                                    label = "Select a SPARQL Query Type:",
                                                                                                                    choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
@@ -219,7 +225,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                column(width = 3,
                                                                                                       dateRangeInput(inputId = "date_range_Queries_2",
                                                                                                                      label = "Choose Dates Between:",
-                                                                                                                     start = "2020-12-31"),
+                                                                                                                     start = "2020-12-31",
+                                                                                                                     end = "2021-12-31"),
                                                                                                       selectInput(inputId = "select_Queries_2",
                                                                                                                   label = "Select a SPARQL Query Type:",
                                                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
@@ -250,7 +257,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                              max = NA)))),
                                                                                                       dateRangeInput(inputId = "date_range_Queries_3",
                                                                                                                      label = "Choose Dates Between:",
-                                                                                                                     start = "2020-12-31"),
+                                                                                                                     start = "2020-12-31",
+                                                                                                                     end = "2021-12-31"),
                                                                                                       selectInput(inputId = "select_Queries_3",
                                                                                                                   label = "Select a SPARQL Query Type:",
                                                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
@@ -286,7 +294,8 @@ ui <- dashboardPage(skin = "black",
                                                                                                                                               value = FALSE)))),
                                                                                                       dateRangeInput(inputId = "date_range_Queries_4",
                                                                                                                      label = "Choose Dates Between:",
-                                                                                                                     start = "2020-12-31"),
+                                                                                                                     start = "2020-12-31",
+                                                                                                                     end = "2021-12-31"),
                                                                                                       selectInput(inputId = "select_Queries_4",
                                                                                                                   label = "Select a SPARQL Query Type:",
                                                                                                                   choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
@@ -516,7 +525,9 @@ server <- function(input, output, session){
     if(t == "hour"){
       
       # construct hourly intervals
-      hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+      hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$day)), 
+                                          by = "1 hour", 
+                                          length.out = difftime(input$date_range_Requests_1[2], input$date_range_Requests_1[1], units = "hours")), "hours"))
       
       rv$request %>% 
         mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
@@ -555,7 +566,9 @@ server <- function(input, output, session){
       if(t == "hour"){
         
         # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                            by = "1 hour", 
+                                            length.out = difftime(input$date_range_Requests_2[2], input$date_range_Requests_2[1], units = "hours")), "hours"))
 
         rv$request %>% 
           mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
@@ -620,7 +633,9 @@ server <- function(input, output, session){
       if(t == "hour"){
         
         # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                            by = "1 hour", 
+                                            length.out = difftime(input$date_range_Requests_3[2], input$date_range_Requests_3[1], units = "hours")), "hours"))
         
         rv$request %>%
           filter(user_agent == input$selectize_Requests_3) %>% 
@@ -690,7 +705,9 @@ server <- function(input, output, session){
         if(t == "hour"){
           
           # construct hourly intervals
-          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                              by = "1 hour", 
+                                              length.out = difftime(input$date_range_Requests_4[2], input$date_range_Requests_4[1], units = "hours")), "hours"))
           
           rv$request %>%
             mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
@@ -756,7 +773,9 @@ server <- function(input, output, session){
         if(t == "hour"){
           
           # construct hourly intervals
-          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                              by = "1 hour", 
+                                              length.out = difftime(input$date_range_Requests_4[2], input$date_range_Requests_4[1], units = "hours")), "hours"))
           
           rv$request %>%
             filter(ip_address == input$selectize_Requests_4) %>% 
@@ -798,7 +817,9 @@ server <- function(input, output, session){
     if(t == "hour"){
       
       # construct hourly intervals
-      hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+      hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                          by = "1 hour", 
+                                          length.out = difftime(input$date_range_Queries_1[2], input$date_range_Queries_1[1], units = "hours")), "hours"))
       
       rv$request %>% 
         mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
@@ -836,7 +857,9 @@ server <- function(input, output, session){
       if(t == "hour"){
         
         # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                            by = "1 hour", 
+                                            length.out = difftime(input$date_range_Queries_2[2], input$date_range_Queries_2[1], units = "hours")), "hours"))
         
         rv$request %>% 
           mutate(hours = cut(as.POSIXct(.$hour), breaks = as.POSIXct(hour_groups))) %>% 
@@ -901,7 +924,9 @@ server <- function(input, output, session){
       if(t == "hour"){
         
         # construct hourly intervals
-        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+        hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                            by = "1 hour", 
+                                            length.out = difftime(input$date_range_Queries_3[2], input$date_range_Queries_3[1], units = "hours")), "hours"))
         
         rv$request %>%
           filter(user_agent == input$selectize_Queries_3) %>% 
@@ -971,7 +996,9 @@ server <- function(input, output, session){
         if(t == "hour"){
           
           # construct hourly intervals
-          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                              by = "1 hour", 
+                                              length.out = difftime(input$date_range_Queries_4[2], input$date_range_Queries_4[1], units = "hours")), "hours"))
           
           rv$request %>%
             mutate(ip_companies = str_extract(.$ip_address, pattern = "\\d+\\.\\d+\\.\\d+\\.")) %>% 
@@ -1036,7 +1063,9 @@ server <- function(input, output, session){
         if(t == "hour"){
           
           # construct hourly intervals
-          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), by = "1 hour", length.out = 24), "hours"))
+          hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
+                                              by = "1 hour", 
+                                              length.out = difftime(input$date_range_Queries_4[2], input$date_range_Queries_4[1], units = "hours")), "hours"))
           
           rv$request %>%
             filter(ip_address == input$selectize_Queries_4) %>% 
@@ -1080,7 +1109,6 @@ server <- function(input, output, session){
                            server = TRUE)
     }
   })
-  
   observe({
     if(input$checkbox_Queries_4 == FALSE){
       updateSelectizeInput(session,
