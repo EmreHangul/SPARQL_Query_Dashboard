@@ -1,19 +1,19 @@
 library(shiny)
 library(shinydashboard)
-library(plotly)
 library(webreadr)
 library(DT)
 library(magrittr)
 library(ggplot2)
+library(dplyr)
+library(plotly)
 library(dashboardthemes)
 library(shinyFiles)
 library(shinyWidgets)
 library(rgeolocate)
 library(stringr)
 library(ggflags)
-library(data.table)
-library(dplyr)
 library(readr)
+library(data.table)
 
 ################################DASHBOARD########################################
 
@@ -36,8 +36,8 @@ ui <- dashboardPage(skin = "black",
                       tabItems(
                         tabItem(tabName = "Home", 
                                 fluidRow(
-                                  tabBox(width = 12,
-                                         title = "",
+                                  tabBox(width = 12, 
+                                         title = "", 
                                          tabPanel(title = "Live Data",
                                                   fluidRow(column(width = 12,
                                                                   tabBox(width = 12,
@@ -79,7 +79,7 @@ ui <- dashboardPage(skin = "black",
                                                                                            column(width = 6,
                                                                                                   plotOutput("live_company"))))))
                                                   )),
-                                         tabPanel(title = "Files", shinybusy::add_busy_spinner(spin = "fading-circle", color = "green"),
+                                         tabPanel(title = "Files", shinybusy::add_busy_spinner(spin = "fading-circle", color = "green"), 
                                                   fluidRow(column(width = 12,
                                                                   align = "center",
                                                                   shinyFilesButton(id = "file",
@@ -100,16 +100,24 @@ ui <- dashboardPage(skin = "black",
                                                                     condition = "output.conddir==false",
                                                                     wellPanel("Selected directory name:",
                                                                               textOutput("text2")),
-                                                                    multiInput(inputId = "multi",
-                                                                               label = "Files:",
-                                                                               choices = "",
-                                                                               selected = "",
-                                                                               width = "900px",
-                                                                               options = list(
-                                                                                 non_selected_header = "Choose Files:",
-                                                                                 selected_header = "You have selected:"
-                                                                               )),
-                                                                    dataTableOutput("table2")))),
+                                                                    pickerInput(
+                                                                      inputId = "picker",
+                                                                      label = h4("Select/Deselect Log Files (One, Multiple or All)"),
+                                                                      choices = "",
+                                                                      multiple = TRUE,
+                                                                      width = "500px"),
+                                                                    actionButton(inputId = "construct_data_frame",
+                                                                                 label = "Construct Data Frame",
+                                                                                 icon = icon("table")),
+                                                                    actionButton(inputId = "construct_line_chart",
+                                                                                 label = "Construct Line Chart",
+                                                                                 icon = icon("chart-line")),
+                                                                    conditionalPanel(
+                                                                      condition = "output.condplot==false",
+                                                                      plotlyOutput("picker_plot")),
+                                                                    conditionalPanel(
+                                                                      condition = "output.condplot==true",
+                                                                      dataTableOutput("table2"))))),
                                                   fluidRow(column(width = 12, 
                                                                   align = "center",
                                                                   conditionalPanel(
@@ -364,83 +372,156 @@ server <- function(input, output, session){
                  session = session,
                  filetypes = c("log", "gz"))
   
-  # update conditional panel condition when directory button is clicked
+  # update conditional panel condition when "select directory" button is clicked
   output$conddir <- reactive({
     is.integer(tail(input$dir,1))
   })
   
-  # output options for multiInput conditional panel
+  # update conditional panel condition when "construct line chart" button is clicked
+  output$condplot <- reactive({
+    input$construct_line_chart %% 2 == 0
+  })
+  
+  # output options for "picker input" conditional panel
   outputOptions(output,"conddir",suspendWhenHidden = FALSE)
+  
+  # output options for "construct line chart" conditional panel
+  outputOptions(output,"condplot",suspendWhenHidden = FALSE)
   
   # initialization of reactive input data
   rv <- reactiveValues(log_data = data.frame(),
-                       request = data.frame())
+                       request = data.frame(),
+                       plot_data = data.frame())
   
-  # show files inside of a directory as multiInput when a directory is selected
+  # show files inside of a directory as pickerInput when a directory is selected
   observeEvent(input$dir,{
     input_dir <- parseDirPath(roots = volumes, 
                               input$dir)
-    updateMultiInput(session = session, inputId = "multi", choices = list.files(input_dir))
+    updatePickerInput(session = session, 
+                      inputId = "picker",
+                      choices = list.files(input_dir),
+                      options = list(
+                        "actions-box" = TRUE,
+                        "deselect-all-text" = "Clear",
+                        "select-all-text" = "Select All",
+                        "none-selected-text" = "No file is selected",
+                        "selected-text-format" = "count>3"
+                      ))
   })
   
   # update the reactive data when an input file is selected (from select directory)
-  observeEvent(input$multi,{
+  observeEvent(input$picker,{
     # parse the file input into a more usable format
     input_d <- parseDirPath(roots = volumes,
                             input$dir)
+    # set the working directory to be the selected directory
+    setwd(input_d)
     
-    # construct a list of all the data from the log files
-    initial_d <- lapply(list.files(input_d)[list.files(input_d)==input$multi], read_combined)
-    
-    # add all the log data into a 1 common data object
-    i <- 1
-    logs <- data.frame()
-    
-    while (i<=length(initial_d)) {
-      logs <- rbind(logs, initial_d[[i]])
-      i = i + 1
-    }
-    
-    # update the reactive data with the corresponding log file
-    rv$log_data <- logs
-    
-    # if a file is selected, update the corresponding data into solicited format
-    if(length(logs) != 0){
+    # if the user wishes to see individual (or combined) log files on a line chart, do the following:
+    observeEvent(input$construct_line_chart,{
       
-      logs$year <- format(as.POSIXct(logs$timestamp), "%Y")
-      logs$month <- format(as.POSIXct(logs$timestamp), "%Y-%m")
-      logs$day <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d")
-      logs$hour <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d %H:%M")
+      # extract the names of the files in the selected directory
+      files <- list.files(path = getwd(), pattern = "*.gz | *.log", full.names = FALSE)
+      files_selected <- files[files == input$picker]
       
-      requests <- split_clf(logs$request) %>% 
-        cbind(year = logs$year,
-              month = logs$month,
-              day = logs$day, 
-              hour = logs$hour,
-              status = logs$status_code,
-              user_agent = logs$user_agent,
-              ip_address = logs$ip_address)
+      # construct a new progress bar
+      progress <- Progress$new(session, min = 0, max = 100)
+      on.exit(progress$close())
       
-      rv$request <- requests
+      # load the data into a list using "lapply", also show a progress bar
+      data_list <- list()
+      for (i in 1:length(files_selected)) {
+        data_list[i] <- lapply(files_selected[i], read_combined)
+        progress$set(value = 100*(i/length(files_selected)),
+                     message = "Please wait while the selected files are loaded.",
+                     detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
+      }
       
-      # update selectize inputs for user agents and ip addresses
-      updateSelectizeInput(session,
-                           inputId = "selectize_Requests_3",
-                           choices = levels(as.factor(rv$request$user_agent)),
-                           server = TRUE)
-      updateSelectizeInput(session,
-                           inputId = "selectize_Queries_3",
-                           choices = levels(as.factor(rv$request$user_agent)),
-                           server = TRUE)
-      updateSelectizeInput(session,
-                           inputId = "selectize_Requests_4",
-                           choices = levels(as.factor(rv$request$ip_address)),
-                           server = TRUE)
-      updateSelectizeInput(session,
-                           inputId = "selectize_Queries_4",
-                           choices = levels(as.factor(rv$request$ip_address)),
-                           server = TRUE)
-    }
+      # load the data into the reactive data
+      rv$plot_data <- rbindlist(data_list)
+      
+      rv$plot_data$days <- as.Date(format(as.POSIXct(rv$plot_data$timestamp), "%Y-%m-%d"))
+      
+    })
+
+    # if the user wishes to see individual (or combined) log files in a data frame, do the following:
+    observeEvent(input$construct_data_frame,{
+      
+      # construct a list of all the data from the selected log files
+      files_selected <- list.files(input_d)[list.files(input_d) == input$picker]
+      
+      # construct a new progress bar
+      progress <- Progress$new(session, min = 0, max = 100)
+      on.exit(progress$close())
+      
+      # load the data into a list using "lapply", also show a progress bar
+      data_list <- list()
+      for (i in 1:length(files_selected)) {
+        data_list[i] <- lapply(list_of_files_selected[i], read_combined)
+        progress$set(value = 100*(i/length(files_selected)),
+                     message = "Please wait while the selected files are loaded.",
+                     detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
+      }
+      
+      # load the data into the reactive data
+      rv$log_data <- rbindlist(data_list)
+      
+      # Update the corresponding data into solicited format
+      if(length(rv$log_data) != 0){
+        
+        rv$log_data$year <- format(as.POSIXct(rv$log_data$timestamp), "%Y")
+        rv$log_data$month <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m")
+        rv$log_data$day <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d")
+        rv$log_data$hour <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d %H:%M")
+        
+        requests <- split_clf(rv$log_data$request) %>% 
+          cbind(year = rv$log_data$year,
+                month = rv$log_data$month,
+                day = rv$log_data$day, 
+                hour = rv$log_data$hour,
+                status = rv$log_data$status_code,
+                user_agent = rv$log_data$user_agent,
+                ip_address = rv$log_data$ip_address)
+        
+        rv$request <- requests
+        
+        # update selectize inputs for user agents and ip addresses
+        updateSelectizeInput(session,
+                             inputId = "selectize_Requests_3",
+                             choices = levels(as.factor(rv$request$user_agent)),
+                             server = TRUE)
+        updateSelectizeInput(session,
+                             inputId = "selectize_Queries_3",
+                             choices = levels(as.factor(rv$request$user_agent)),
+                             server = TRUE)
+        updateSelectizeInput(session,
+                             inputId = "selectize_Requests_4",
+                             choices = levels(as.factor(rv$request$ip_address)),
+                             server = TRUE)
+        updateSelectizeInput(session,
+                             inputId = "selectize_Queries_4",
+                             choices = levels(as.factor(rv$request$ip_address)),
+                             server = TRUE)
+      }
+    })
+  })
+  
+  output$picker_plot <- renderPlotly({
+    
+      ggplotly(rv$plot_data %>% 
+        group_by(days) %>% 
+        count(days) %>% 
+        rename(count = n) %>% 
+        ggplot(aes(x = days, y = count)) +
+        geom_line(col = "#00FF00")+ 
+        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+        labs(title = "HTTP Requests over Time",
+             x = "Days",
+             y = "Total Requests") +
+        theme_light() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size = 1.5)),tooltip = c("y","x"))
   })
   
   # update the reactive data when an input file is selected (from select file)
@@ -450,38 +531,28 @@ server <- function(input, output, session){
     input_file <- parseFilePaths(roots = volumes,
                                  input$file)
     
-    # construct a list of all the data from the log files
+    # construct a list of all the data from the selected log files
     initial_data <- lapply(input_file$datapath, read_combined)
     
-    # add all the log data into a 1 common data object
-    i <- 1
-    logs <- data.frame()
-    
-    while (i<=length(initial_data)) {
-      logs <- rbind(logs, initial_data[[i]])
-      i = i + 1
-    }
-    
-    
     # update the reactive data with the corresponding log file
-    rv$log_data <- logs
+    rv$log_data <- rbindlist(initial_data)
     
     # if a file is selected, update the corresponding data into solicited format
-    if(length(logs) != 0){
+    if(length(rv$log_data) != 0){
       
-      logs$year <- format(as.POSIXct(logs$timestamp), "%Y")
-      logs$month <- format(as.POSIXct(logs$timestamp), "%Y-%m")
-      logs$day <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d")
-      logs$hour <- format(as.POSIXct(logs$timestamp), "%Y-%m-%d %H:%M")
+      rv$log_data$year <- format(as.POSIXct(rv$log_data$timestamp), "%Y")
+      rv$log_data$month <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m")
+      rv$log_data$day <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d")
+      rv$log_data$hour <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d %H:%M")
       
-      requests <- split_clf(logs$request) %>% 
-        cbind(year = logs$year,
-              month = logs$month,
-              day = logs$day, 
-              hour = logs$hour,
-              status = logs$status_code,
-              user_agent = logs$user_agent,
-              ip_address = logs$ip_address)
+      requests <- split_clf(rv$log_data$request) %>% 
+        cbind(year = rv$log_data$year,
+              month = rv$log_data$month,
+              day = rv$log_data$day, 
+              hour = rv$log_data$hour,
+              status = rv$log_data$status_code,
+              user_agent = rv$log_data$user_agent,
+              ip_address = rv$log_data$ip_address)
       
       rv$request <- requests
       
@@ -508,8 +579,6 @@ server <- function(input, output, session){
                            server = TRUE)
     }
   })
-  
-  
   
   # click on "reset" buttons to reset selectize inputs in "User-Agent" and "IP-Addresses" tabs
   observeEvent(input$action_Requests_3,{
@@ -1326,9 +1395,10 @@ server <- function(input, output, session){
                                 lengthMenu = c(5,10,20,50),
                                 autoWidth = TRUE,
                                 scrollX = TRUE,
-                                columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
+                                columnDefs = list(list(width = "4%", targets = c(1,2,3)))),
                               filter = "top")
   })
+  
   
   # show the location information of the ip addresses
   output$table_Requests_4 <- renderDataTable({
@@ -1960,7 +2030,7 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later.")
+          need(!is.na(live_country_reactive()$country_code), "The server is not available.")
         )
         
         live_country_reactive() %>% 
@@ -2168,7 +2238,7 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later.")
+          need(!is.na(live_country_reactive()$country_code), "The server is not available.")
         )
         
         live_country_reactive() %>% 
@@ -2185,8 +2255,6 @@ server <- function(input, output, session){
       })
     }
   }) 
-  
-  
 }
 
 shinyApp(ui = ui,server = server)
