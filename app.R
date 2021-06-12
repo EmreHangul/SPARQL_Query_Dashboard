@@ -41,6 +41,11 @@ ui <- dashboardPage(skin = "black",
                                          tabPanel(title = "Live Data",
                                                   fluidRow(column(width = 12,
                                                                   tabBox(width = 12,
+                                                                         tabPanel(title = "Overall",
+                                                                                  fluidRow(column(width = 12,
+                                                                                                  plotOutput("live_chart"))),
+                                                                                  fluidRow(column(width = 12,
+                                                                                                  verbatimTextOutput("live_text")))),
                                                                          tabPanel(title = "Requests/Queries",
                                                                                   fluidRow(column(width = 4,offset = 4,
                                                                                                   wellPanel(strong("Number of lines total in the live file:"),
@@ -64,9 +69,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                                            options = list(maxOptions = 10)),
                                                                                                             actionButton(inputId = "live_action_ip",
                                                                                                                          label = "Apply"),
-                                                                                                            dataTableOutput("live_table_ip")))),
-                                                                                  fluidRow(column(width = 12,
-                                                                                                  verbatimTextOutput("live_text")))),
+                                                                                                            dataTableOutput("live_table_ip"))))),
                                                                          tabPanel(title = "HTTP Statuses",
                                                                                   fluidRow(column(width = 10,
                                                                                                   plotOutput("live_status")))),
@@ -113,10 +116,10 @@ ui <- dashboardPage(skin = "black",
                                                                                  label = "Construct Line Chart",
                                                                                  icon = icon("chart-line")),
                                                                     conditionalPanel(
-                                                                      condition = "output.condplot==false",
+                                                                      condition = 'output.condplot=="chart"',
                                                                       plotlyOutput("picker_plot")),
                                                                     conditionalPanel(
-                                                                      condition = "output.condplot==true",
+                                                                      condition = 'output.condplot=="frame"',
                                                                       dataTableOutput("table2"))))),
                                                   fluidRow(column(width = 12, 
                                                                   align = "center",
@@ -377,24 +380,26 @@ server <- function(input, output, session){
     is.integer(tail(input$dir,1))
   })
   
-  # update conditional panel condition when "construct line chart" button is clicked
+  # update conditional panel condition when "construct data frame" button is/isn't clicked
   output$condplot <- reactive({
-    input$construct_line_chart %% 2 == 0
+    rv$last_button
   })
   
   # output options for "picker input" conditional panel
   outputOptions(output,"conddir",suspendWhenHidden = FALSE)
   
-  # output options for "construct line chart" conditional panel
+  # output options for "picker input" conditional panel
   outputOptions(output,"condplot",suspendWhenHidden = FALSE)
   
   # initialization of reactive input data
   rv <- reactiveValues(log_data = data.frame(),
                        request = data.frame(),
-                       plot_data = data.frame())
+                       plot_data = data.frame(),
+                       last_button = character())
   
   # show files inside of a directory as pickerInput when a directory is selected
   observeEvent(input$dir,{
+    
     input_dir <- parseDirPath(roots = volumes, 
                               input$dir)
     updatePickerInput(session = session, 
@@ -408,21 +413,32 @@ server <- function(input, output, session){
                         "selected-text-format" = "count>3"
                       ))
   })
-  
-  # update the reactive data when an input file is selected (from select directory)
-  observeEvent(input$picker,{
-    # parse the file input into a more usable format
-    input_d <- parseDirPath(roots = volumes,
-                            input$dir)
-    # set the working directory to be the selected directory
-    setwd(input_d)
-    
+
     # if the user wishes to see individual (or combined) log files on a line chart, do the following:
     observeEvent(input$construct_line_chart,{
       
+      if(input$construct_line_chart > 0){
+        rv$last_button = "chart"
+      }
+      
+      # parse the file input into a more usable format
+      input_d <- parseDirPath(roots = volumes,
+                              input$dir)
+      # set the working directory to be the selected directory
+      setwd(input_d)
+      
       # extract the names of the files in the selected directory
       files <- list.files(path = getwd(), pattern = "*.gz | *.log", full.names = FALSE)
+      
+      # validate that at least one file should be selected to construct the line chart
+      validate(
+        need(!is.na(input$picker), " ")
+      )
       files_selected <- files[files == input$picker]
+      
+      output$tasd <- renderText({
+        input$picker %>% str
+      })
       
       # construct a new progress bar
       progress <- Progress$new(session, min = 0, max = 100)
@@ -447,6 +463,20 @@ server <- function(input, output, session){
     # if the user wishes to see individual (or combined) log files in a data frame, do the following:
     observeEvent(input$construct_data_frame,{
       
+      if(input$construct_data_frame > 0){
+        rv$last_button = "frame"
+      }
+      
+      # parse the file input into a more usable format
+      input_d <- parseDirPath(roots = volumes,
+                              input$dir)
+      # set the working directory to be the selected directory
+      setwd(input_d)
+      
+      # validate that at least one file should be selected to construct the line chart
+      validate(
+        need(!is.na(input$picker), " ")
+      )
       # construct a list of all the data from the selected log files
       files_selected <- list.files(input_d)[list.files(input_d) == input$picker]
       
@@ -457,7 +487,7 @@ server <- function(input, output, session){
       # load the data into a list using "lapply", also show a progress bar
       data_list <- list()
       for (i in 1:length(files_selected)) {
-        data_list[i] <- lapply(list_of_files_selected[i], read_combined)
+        data_list[i] <- lapply(files_selected[i], read_combined)
         progress$set(value = 100*(i/length(files_selected)),
                      message = "Please wait while the selected files are loaded.",
                      detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
@@ -504,9 +534,12 @@ server <- function(input, output, session){
                              server = TRUE)
       }
     })
-  })
   
   output$picker_plot <- renderPlotly({
+    
+    validate(
+      need(nrow(rv$plot_data) > 0, " ")
+    )
     
       ggplotly(rv$plot_data %>% 
         group_by(days) %>% 
@@ -1814,28 +1847,14 @@ server <- function(input, output, session){
     }
   })
   
-  ######################################## live data ##################################################
-  
-  # function to be used in live file reader below
-  func <- function(x){
-    read.csv(x,
-             col.names = c("ip_address",
-                           "remote_user_ident",
-                           "local_user_ident",
-                           "timestamp",
-                           "request",
-                           "status_code",
-                           "bytes_sent",
-                           "referer",
-                           "user_agent"))
-  }
+  ########################## Implementation of the Live Functionality  ##########################
   
   # read the lines of the live log file
   total_live_data <- reactiveFileReader( 
     intervalMillis = reactive({60000/(input$live_numeric)}),
     session = session,
     filePath = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log",
-    readFunc = func)
+    readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
   observe({    
@@ -1867,7 +1886,7 @@ server <- function(input, output, session){
       # show the last 10 lines in the live data
       output$live_text <- renderPrint({
         
-        live_data() %>% tail(10) %>% print
+        live_data() %>% as.data.frame() %>% tail(10) %>% print
         
       })
       
@@ -1911,6 +1930,35 @@ server <- function(input, output, session){
           group_by(agents) %>% 
           count(agents) %>% 
           rename(count = n)
+      })
+      
+      # reactive for live line chart
+      live_chart_reactive <- reactive({
+        live_data() %>%
+          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
+          group_by(seconds) %>% 
+          count(seconds) %>% 
+          rename(count = n)
+      })
+      
+      # reactive plot for live line chart
+      output$live_chart <- renderPlot({
+        
+        validate(
+          need(nrow(live_data()) > 0, "Please wait.")
+        )
+        
+        live_chart_reactive() %>% 
+          ggplot(aes(x = seconds, y = count)) +
+          geom_line(col = "#66FF66", size = 1.2)+ 
+          labs(x = "\nRealtime (in seconds)",
+               y = "Requests per second\n") +
+          scale_x_datetime(labels = scales::date_format("%H:%M:%S")) +
+          theme_light() +
+          theme(axis.text.x = element_text(angle = 90, size = 15),
+                axis.text.y = element_text(size = 15),
+                axis.title.x = element_text(size = 18, color = "#000033"),
+                axis.title.y = element_text(size = 18, color = "#000033"))
       })
       
       # reactive plot for live HTTP requests
@@ -2017,6 +2065,7 @@ server <- function(input, output, session){
         }
       })
       
+      # reactive data for displaying country codes&flags of the last 5 IP addresses
       live_country_reactive <- reactive({
         ip_api(tail(live_data(),5)$ip_address) %>% 
           select(country_code) %>% 
@@ -2027,6 +2076,7 @@ server <- function(input, output, session){
         
       })
       
+      # reactive plot for displaying country codes&flags of the last 5 IP addresses
       output$live_country <- renderPlot({
         
         validate(
@@ -2119,6 +2169,35 @@ server <- function(input, output, session){
           group_by(agents) %>% 
           count(agents) %>% 
           rename(count = n)
+      })
+      
+      # reactive for live line chart
+      live_chart_reactive <- reactive({
+        live_data() %>%
+          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
+          group_by(seconds) %>% 
+          count(seconds) %>% 
+          rename(count = n)
+      })
+      
+      # reactive plot for live line chart
+      output$live_chart <- renderPlot({
+        
+        validate(
+          need(nrow(live_data()) > 0, "Please wait.")
+        )
+        
+        live_chart_reactive() %>% 
+          ggplot(aes(x = seconds, y = count)) +
+          geom_line(col = "#66FF66", size = 1.2)+ 
+          labs(x = "\nRealtime (in seconds)",
+               y = "Requests per second\n") +
+          scale_x_datetime(labels = scales::date_format("%H:%M:%S")) +
+          theme_light() +
+          theme(axis.text.x = element_text(angle = 90, size = 15),
+                axis.text.y = element_text(size = 15),
+                axis.title.x = element_text(size = 18, color = "#000033"),
+                axis.title.y = element_text(size = 18, color = "#000033"))
       })
       
       # reactive plot for live HTTP Requests of unread data
@@ -2225,6 +2304,7 @@ server <- function(input, output, session){
         }
       })
       
+      # reactive data for displaying country codes&flags of the last 5 IP addresses
       live_country_reactive <- reactive({
         ip_api(tail(live_data(), 5)$ip_address) %>% 
           select(country_code) %>% 
@@ -2235,6 +2315,7 @@ server <- function(input, output, session){
         
       })
       
+      # reactive plot for displaying country codes&flags of the last 5 IP addresses
       output$live_country <- renderPlot({
         
         validate(
