@@ -15,6 +15,9 @@ library(ggflags)
 library(readr)
 library(data.table)
 
+# command line arguments, if supplied
+args <- commandArgs(trailingOnly = TRUE)
+
 ################################DASHBOARD########################################
 
 ui <- dashboardPage(skin = "black",
@@ -44,23 +47,25 @@ ui <- dashboardPage(skin = "black",
                                                                          tabPanel(title = "Overall",
                                                                                   fluidRow(column(width = 12,
                                                                                                   plotOutput("live_chart"))),
-                                                                                  fluidRow(column(width = 12,
-                                                                                                  verbatimTextOutput("live_text")))),
-                                                                         tabPanel(title = "Requests/Queries",
-                                                                                  fluidRow(column(width = 4,offset = 4,
+                                                                                  fluidRow(column(width = 4,offset = 2,
                                                                                                   wellPanel(strong("Number of lines total in the live file:"),
                                                                                                             textOutput("number_of_lines_total"),
                                                                                                             strong("Number of lines unread from the last session:"),
-                                                                                                            textOutput("number_of_lines_unread")))),
-                                                                                  fluidRow(column(width = 5,
+                                                                                                            textOutput("number_of_lines_unread"))),
+                                                                                           column(width = 4,offset = 2,
+                                                                                                         numericInput(inputId = "live_numeric",
+                                                                                                                      label = "Rate of Update (per minute):",
+                                                                                                                      value = ifelse(length(args) == 0,
+                                                                                                                                     as.numeric(str_extract(string = readLines("log_files.log.conf")[1], pattern = "\\d+")),
+                                                                                                                                     as.numeric(args[1])),
+                                                                                                                      min = 1,
+                                                                                                                      max = 300))),
+                                                                                  fluidRow(column(width = 12,
+                                                                                                  verbatimTextOutput("live_text")))),
+                                                                         tabPanel(title = "Requests/Queries",
+                                                                                  fluidRow(column(width = 6,
                                                                                                   plotOutput("live_request")),
-                                                                                           column(width = 2,
-                                                                                                  numericInput(inputId = "live_numeric",
-                                                                                                               label = "Rate of Update (per minute):",
-                                                                                                               value = 30,
-                                                                                                               min = 1,
-                                                                                                               max = 300)),
-                                                                                           column(width = 5,
+                                                                                           column(width = 6,
                                                                                                   plotOutput("live_query"))),
                                                                                   fluidRow(column(width = 12,
                                                                                                   wellPanel(selectizeInput(inputId = "live_text_ip",
@@ -1463,16 +1468,26 @@ server <- function(input, output, session){
         geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
         geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
         labs(title = "Number of Requests Over Selected Timeframe",
-             x = "Days",
-             y = "Total Requests") +
+             x = paste0("\nTime Interval(",tolower(input$radio_Requests_1),")")) +
         theme_light() +
         theme(axis.text.x = element_text(angle = 90, hjust = 1),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+              axis.title.x = element_text(size = 13),
+              axis.title.y = element_text(size = 13)), tooltip = c("y","x")) %>% layout(yaxis = list(title = 
+                                                                                                       list(text = "Number of Requests",
+                                                                                                            standoff = 20L)))
   })
   
   # Interactive plot for HTTP Requests (Status Codes)
   output$plot_Requests_2 <- renderPlotly({
+    
+    x <- list(
+      title = list(text = paste0("\nTime Interval(",tolower(input$radio_Requests_2),")"),
+                   standoff = 15L)
+    )
+    y <- list(
+      title = list(text = "Number of Requests",
+                   standoff = 15L)
+    )
     
     # return an error message if the date ranges for rv_Requests_2() is not applicable.
     validate(
@@ -1482,19 +1497,17 @@ server <- function(input, output, session){
     ggplotly(
       rv_Requests_2() %>% 
         ggplot(aes_string(x = tolower(input$radio_Requests_2), y = "count", fill = "status")) +
-        geom_bar(position = "dodge", width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+        geom_bar(position = "dodge", width = 0.5, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
         geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
         facet_grid(~status, scales = "free_x", space = "free_x") +
-        labs(title = "Number of Requests Over Selected Timeframe - Facet by Status Codes", 
-             x = "Days",
-             y = "Total Requests") +
+        labs(title = "Number of Queries Over Selected Timeframe - Facet by Status Codes") +
         theme_light() +
-        theme(axis.text.x = element_blank(),
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
               axis.title.x = element_blank(),
-              axis.title.y = element_text(size = 1.5),
+              axis.title.y = element_blank(),
               strip.background = element_rect(fill = "#CCFFCC"),
               strip.text = element_text(color = "#003300",
-                                        size = rel(1.25))), tooltip = c("y","x"))
+                                        size = rel(1.25))), tooltip = c("y","x")) %>% layout(yaxis = y, xaxis = x)
   })
   
   # Interactive plot for HTTP Requests (User Agents)
@@ -1522,7 +1535,7 @@ server <- function(input, output, session){
                y = "Number of Requests") +
           theme_light() +
           theme(axis.text.x = element_blank(),
-                axis.title.x = element_blank(),
+                axis.title.x = element_text(size = 13),
                 axis.title.y = element_text(size = 13)), tooltip = "text")
       
     } else {
@@ -1538,12 +1551,12 @@ server <- function(input, output, session){
           geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
           geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
           labs(title = "Number of Requests Over Selected Timeframe",
-               x = "Days",
+               x = paste0("\nTime Interval(",tolower(input$radio_Requests_3),")"),
                y = "Total Requests") +
           theme_light() +
           theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+                axis.title.x = element_text(size = 13),
+                axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
       
     }
   })
@@ -1575,7 +1588,7 @@ server <- function(input, output, session){
                  y = "Number of Requests") +
             theme_light() +
             theme(axis.text.x = element_blank(),
-                  axis.title.x = element_blank(),
+                  axis.title.x = element_text(size = 13),
                   axis.title.y = element_text(size = 13)), tooltip = "text")
         
       } else {
@@ -1591,12 +1604,12 @@ server <- function(input, output, session){
             geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
             geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
             labs(title = "Number of Requests Over Selected Timeframe",
-                 x = "Days",
+                 x = paste0("\nTime Interval(",tolower(input$radio_Requests_4),")"),
                  y = "Total Requests") +
             theme_light() +
             theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                  axis.title.x = element_blank(),
-                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+                  axis.title.x = element_text(size = 13),
+                  axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
         
       }
     } else {
@@ -1623,7 +1636,7 @@ server <- function(input, output, session){
                  y = "Number of Requests") +
             theme_light() +
             theme(axis.text.x = element_blank(),
-                  axis.title.x = element_blank(),
+                  axis.title.x = element_text(size = 13),
                   axis.title.y = element_text(size = 13)), tooltip = "text")
         
       } else {
@@ -1639,12 +1652,12 @@ server <- function(input, output, session){
             geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
             geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
             labs(title = "Number of Requests Over Selected Timeframe",
-                 x = "Days",
+                 x = paste0("\nTime Interval(",tolower(input$radio_Requests_4),")"),
                  y = "Total Requests") +
             theme_light() +
             theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                  axis.title.x = element_blank(),
-                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+                  axis.title.x = element_text(size = 13),
+                  axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
       }
     }
   })
@@ -1661,16 +1674,26 @@ server <- function(input, output, session){
         geom_bar(stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
         geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
         labs(title = "Number of Queries Over Selected Timeframe",
-             x = "Days",
-             y = "Total Queries") +
+             x = paste0("\nTime Interval(",tolower(input$radio_Queries_1),")")) +
         theme_light() +
         theme(axis.text.x = element_text(angle = 90, hjust = 1),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+              axis.title.x = element_text(size = 13),
+              axis.title.y = element_text(size = 13)), tooltip = c("y","x")) %>% layout(yaxis = list(title = 
+                                                                                                        list(text = "Number of Requests",
+                                                                                                             standoff = 20L)))
   })
   
   # Interactive plot for SPARQL Queries (Status Codes)
   output$plot_Queries_2 <- renderPlotly({
+    
+    x <- list(
+      title = list(text = paste0("\nTime Interval(",tolower(input$radio_Requests_2),")"),
+                   standoff = 15L)
+    )
+    y <- list(
+      title = list(text = "Number of Requests",
+                   standoff = 15L)
+    )
     
     # return an error message if the date ranges for rv_Queries_2() is not applicable.
     validate(
@@ -1683,16 +1706,14 @@ server <- function(input, output, session){
         geom_bar(position = "dodge", stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
         geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
         facet_grid(~status) +
-        labs(title = "Number of Queries Over Selected Timeframe - Facet by Status Codes",
-             x = "Days",
-             y = "Total Queries") +
+        labs(title = "Number of Queries Over Selected Timeframe - Facet by Status Codes") +
         theme_light() +
         theme(axis.text.x = element_blank(),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size = 1.5),
+              axis.title.x = element_text(size = 13),
+              axis.title.y = element_text(size = 13),
               strip.background = element_rect(fill = "#CCFFCC"),
               strip.text = element_text(color = "#003300",
-                                        size = rel(1.25))), tooltip = c("y","x"))
+                                        size = rel(1.25))), tooltip = c("y","x")) %>% layout(yaxis = y, xaxis = x)
   })
   
   # Interactive plot for SPARQL Queries (User Agents)
@@ -1736,12 +1757,12 @@ server <- function(input, output, session){
           geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
           geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
           labs(title = "Number of Queries Over Selected Timeframe",
-               x = "Days",
+               x = paste0("\nTime Interval(",tolower(input$radio_Queries_3),")"),
                y = "Total Queries") +
           theme_light() +
           theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                axis.title.x = element_blank(),
-                axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+                axis.title.x = element_text(size = 13),
+                axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
       
     }
   })
@@ -1773,7 +1794,7 @@ server <- function(input, output, session){
                  y = "Number of Queries") +
             theme_light() +
             theme(axis.text.x = element_blank(),
-                  axis.title.x = element_blank(),
+                  axis.title.x = element_text(size = 13),
                   axis.title.y = element_text(size = 13)), tooltip = "text")
         
       } else {
@@ -1789,12 +1810,12 @@ server <- function(input, output, session){
             geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
             geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
             labs(title = "Number of Queries Over Selected Timeframe",
-                 x = "Days",
+                 x = paste0("\nTime Interval(",tolower(input$radio_Queries_4),")"),
                  y = "Total Queries") +
             theme_light() +
             theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                  axis.title.x = element_blank(),
-                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
+                  axis.title.x = element_text(size = 13),
+                  axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
         
       }
     } else {
@@ -1820,7 +1841,7 @@ server <- function(input, output, session){
                  y = "Number of Queries") +
             theme_light() +
             theme(axis.text.x = element_blank(),
-                  axis.title.x = element_blank(),
+                  axis.title.x = element_text(size = 13),
                   axis.title.y = element_text(size = 13)), tooltip = "text")
         
       } else {
@@ -1836,25 +1857,26 @@ server <- function(input, output, session){
             geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
             geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
             labs(title = "Number of Queries Over Selected Timeframe",
-                 x = "Days",
+                 x = paste0("\nTime Interval(",tolower(input$radio_Queries_4),")"),
                  y = "Total Queries") +
             theme_light() +
             theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                  axis.title.x = element_blank(),
-                  axis.title.y = element_text(size = 1.5)), tooltip = c("y","x"))
-        
+                  axis.title.x = element_text(size = 13),
+                  axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
       }
     }
   })
   
   ########################## Implementation of the Live Functionality  ##########################
   
-  # read the lines of the live log file
-  total_live_data <- reactiveFileReader( 
-    intervalMillis = reactive({60000/(input$live_numeric)}),
-    session = session,
-    filePath = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log",
-    readFunc = read_combined)
+    # read the lines of the live log file
+    total_live_data <- reactiveFileReader( 
+      intervalMillis = reactive({
+        60000/input$live_numeric
+      }),
+      session = session,
+      filePath = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log",
+      readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
   observe({    
@@ -1886,7 +1908,7 @@ server <- function(input, output, session){
       # show the last 10 lines in the live data
       output$live_text <- renderPrint({
         
-        live_data() %>% as.data.frame() %>% tail(10) %>% print
+        live_data() %>% as.data.frame() %>% tail(10) %>% print 
         
       })
       
@@ -1951,14 +1973,14 @@ server <- function(input, output, session){
         live_chart_reactive() %>% 
           ggplot(aes(x = seconds, y = count)) +
           geom_line(col = "#66FF66", size = 1.2)+ 
-          labs(x = "\nRealtime (in seconds)",
-               y = "Requests per second\n") +
+          labs(x = "Realtime(in seconds)",
+               y = "Requests(per second)\n") +
           scale_x_datetime(labels = scales::date_format("%H:%M:%S")) +
           theme_light() +
           theme(axis.text.x = element_text(angle = 90, size = 15),
                 axis.text.y = element_text(size = 15),
-                axis.title.x = element_text(size = 18, color = "#000033"),
-                axis.title.y = element_text(size = 18, color = "#000033"))
+                axis.title.x = element_text(size = 18, color = "#003366"),
+                axis.title.y = element_text(size = 18, color = "#003366"))
       })
       
       # reactive plot for live HTTP requests
@@ -2080,7 +2102,7 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available.")
+          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later in a new session.")
         )
         
         live_country_reactive() %>% 
@@ -2118,7 +2140,7 @@ server <- function(input, output, session){
       # show the last 10 lines of the unread data
       output$live_text <- renderPrint({
         
-        live_data() %>% tail(10) %>% print()
+        live_data() %>% as.data.frame() %>% tail(10) %>% print 
         
       })
       
@@ -2190,14 +2212,14 @@ server <- function(input, output, session){
         live_chart_reactive() %>% 
           ggplot(aes(x = seconds, y = count)) +
           geom_line(col = "#66FF66", size = 1.2)+ 
-          labs(x = "\nRealtime (in seconds)",
-               y = "Requests per second\n") +
+          labs(x = "Realtime(in seconds)",
+               y = "Requests(per second)\n") +
           scale_x_datetime(labels = scales::date_format("%H:%M:%S")) +
           theme_light() +
           theme(axis.text.x = element_text(angle = 90, size = 15),
                 axis.text.y = element_text(size = 15),
-                axis.title.x = element_text(size = 18, color = "#000033"),
-                axis.title.y = element_text(size = 18, color = "#000033"))
+                axis.title.x = element_text(size = 18, color = "#003366"),
+                axis.title.y = element_text(size = 18, color = "#003366"))
       })
       
       # reactive plot for live HTTP Requests of unread data
@@ -2319,7 +2341,7 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available.")
+          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later in a new session.")
         )
         
         live_country_reactive() %>% 
