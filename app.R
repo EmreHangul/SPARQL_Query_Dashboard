@@ -18,6 +18,15 @@ library(data.table)
 # command line arguments, if supplied
 args <- commandArgs(trailingOnly = TRUE)
 
+# display system ip on the selectize input when the program is first initialized; corrected for OS type
+if (.Platform$OS.type == "windows") {
+  my_system_info <- system(command = "nslookup myip.opendns.com resolver1.opendns.com", intern=TRUE)
+  my_ip <- str_extract(string = my_system_info[6], 
+                       pattern = "\\d+\\.\\d+\\.\\d+\\.\\d+")
+} else {
+  my_ip <- system(command = "curl ifconfig.me", intern=TRUE)
+}
+ 
 ################################DASHBOARD########################################
 
 ui <- dashboardPage(skin = "black",
@@ -26,10 +35,7 @@ ui <- dashboardPage(skin = "black",
                     dashboardSidebar(
                       sidebarMenu(
                         menuItem(tabName = "Home", text = "Home"),
-                        menuItem(tabName = "About", text = "About the App")
-                      ),
-                      sidebarSearchForm(textId = "search", buttonId = "searchbutton", label = "Search")
-                    ),
+                        menuItem(tabName = "About", text = "About the App"))),
                     dashboardBody(
                       shinyDashboardThemes(theme = "poor_mans_flatly"),
                       tags$head(tags$style(HTML(".shiny-output-error-validation {color: #FF9900; font-size: 20px; font-weight: bold}"))),
@@ -53,28 +59,28 @@ ui <- dashboardPage(skin = "black",
                                                                                                             strong("Number of lines unread from the last session:"),
                                                                                                             textOutput("number_of_lines_unread"))),
                                                                                            column(width = 4,offset = 2,
-                                                                                                         numericInput(inputId = "live_numeric",
-                                                                                                                      label = "Rate of Update (per minute):",
-                                                                                                                      value = ifelse(length(args) == 0,
-                                                                                                                                     as.numeric(str_extract(string = readLines("log_files.log.conf")[1], pattern = "\\d+")),
-                                                                                                                                     as.numeric(args[1])),
-                                                                                                                      min = 1,
-                                                                                                                      max = 300))),
+                                                                                                  selectInput(inputId = "live_numeric",
+                                                                                                              label = "Change Rate of Update(per minute)",
+                                                                                                              choices = c("1","5","10","15","20","30","60","90","120","180","240","300"),
+                                                                                                              selected = ifelse(length(args) == 0,
+                                                                                                                                str_extract(string = readLines("live_logs.log.conf")[1], pattern = "\\d+"),
+                                                                                                                                args[1])))),
                                                                                   fluidRow(column(width = 12,
-                                                                                                  verbatimTextOutput("live_text")))),
-                                                                         tabPanel(title = "Requests/Queries",
-                                                                                  fluidRow(column(width = 6,
-                                                                                                  plotOutput("live_request")),
-                                                                                           column(width = 6,
-                                                                                                  plotOutput("live_query"))),
+                                                                                                  verbatimTextOutput("live_text"))),
                                                                                   fluidRow(column(width = 12,
                                                                                                   wellPanel(selectizeInput(inputId = "live_text_ip",
                                                                                                                            label = "Enter an IP Address:",
-                                                                                                                           choices = NULL,
+                                                                                                                           choices = my_ip,
+                                                                                                                           selected = my_ip,
                                                                                                                            options = list(maxOptions = 10)),
                                                                                                             actionButton(inputId = "live_action_ip",
                                                                                                                          label = "Apply"),
                                                                                                             dataTableOutput("live_table_ip"))))),
+                                                                         tabPanel(title = "Requests/Queries",
+                                                                                  fluidRow(column(width = 6,
+                                                                                                  plotOutput("live_request")),
+                                                                                           column(width = 6,
+                                                                                                  plotOutput("live_query")))),
                                                                          tabPanel(title = "HTTP Statuses",
                                                                                   fluidRow(column(width = 10,
                                                                                                   plotOutput("live_status")))),
@@ -429,21 +435,15 @@ server <- function(input, output, session){
       # parse the file input into a more usable format
       input_d <- parseDirPath(roots = volumes,
                               input$dir)
-      # set the working directory to be the selected directory
-      setwd(input_d)
       
       # extract the names of the files in the selected directory
-      files <- list.files(path = getwd(), pattern = "*.gz | *.log", full.names = FALSE)
+      files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
       
       # validate that at least one file should be selected to construct the line chart
       validate(
         need(!is.na(input$picker), " ")
       )
       files_selected <- files[files == input$picker]
-      
-      output$tasd <- renderText({
-        input$picker %>% str
-      })
       
       # construct a new progress bar
       progress <- Progress$new(session, min = 0, max = 100)
@@ -452,7 +452,7 @@ server <- function(input, output, session){
       # load the data into a list using "lapply", also show a progress bar
       data_list <- list()
       for (i in 1:length(files_selected)) {
-        data_list[i] <- lapply(files_selected[i], read_combined)
+        data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
         progress$set(value = 100*(i/length(files_selected)),
                      message = "Please wait while the selected files are loaded.",
                      detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
@@ -475,15 +475,16 @@ server <- function(input, output, session){
       # parse the file input into a more usable format
       input_d <- parseDirPath(roots = volumes,
                               input$dir)
-      # set the working directory to be the selected directory
-      setwd(input_d)
       
-      # validate that at least one file should be selected to construct the line chart
+      # extract the names of the files in the selected directory
+      files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
+
+      # validate that at least one file should be selected to construct the data frame
       validate(
         need(!is.na(input$picker), " ")
       )
       # construct a list of all the data from the selected log files
-      files_selected <- list.files(input_d)[list.files(input_d) == input$picker]
+      files_selected <- files[files == input$picker]
       
       # construct a new progress bar
       progress <- Progress$new(session, min = 0, max = 100)
@@ -492,7 +493,7 @@ server <- function(input, output, session){
       # load the data into a list using "lapply", also show a progress bar
       data_list <- list()
       for (i in 1:length(files_selected)) {
-        data_list[i] <- lapply(files_selected[i], read_combined)
+        data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
         progress$set(value = 100*(i/length(files_selected)),
                      message = "Please wait while the selected files are loaded.",
                      detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
@@ -1403,12 +1404,7 @@ server <- function(input, output, session){
       need(!is.integer(input$dir), "No directory is currently selected. Please select a directory.")
     )
     input_dir <- parseDirPath(roots = volumes, input$dir)
-    
-    # set the working directory as the selected directory
-    setwd(input_dir)
-    
-    # return the name of the selected directory(now also the working directory)
-    print(getwd())
+    print(input_dir)
     
   })
   
@@ -1871,18 +1867,16 @@ server <- function(input, output, session){
   
     # read the lines of the live log file
     total_live_data <- reactiveFileReader( 
-      intervalMillis = reactive({
-        60000/input$live_numeric
-      }),
+      intervalMillis = reactive({60000/as.numeric(input$live_numeric)}),
       session = session,
-      filePath = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log",
+      filePath = "live_logs.log",
       readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
   observe({    
     
     # if there is not a .lock file in the first place, read all of the live data and construct a .lock file
-    if(file.exists("log_files.log.lock") == FALSE){
+    if(file.exists("live_logs.log.lock") == FALSE){
       
       # the .lock file value will be the number of lines in *all* of the live data
       lock_file_value <- reactive({nrow(total_live_data())}) 
@@ -1901,15 +1895,22 @@ server <- function(input, output, session){
       session$onSessionEnded(function(){
         # write the .lock file value into a newly constructed .lock file
         write_csv(isolate(nrow(live_data())) %>% as_tibble(),
-                  file = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log.lock",
+                  file = "live_logs.log.lock",
                   col_names = FALSE)
       })
       
       # show the last 10 lines in the live data
       output$live_text <- renderPrint({
-        
         live_data() %>% as.data.frame() %>% tail(10) %>% print 
-        
+      })
+      
+      # reactive for live line chart
+      live_chart_reactive <- reactive({
+        live_data() %>%
+          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
+          group_by(seconds) %>% 
+          count(seconds) %>% 
+          rename(count = n)
       })
       
       # reactive for live HTTP requests
@@ -1954,12 +1955,23 @@ server <- function(input, output, session){
           rename(count = n)
       })
       
-      # reactive for live line chart
-      live_chart_reactive <- reactive({
-        live_data() %>%
-          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
-          group_by(seconds) %>% 
-          count(seconds) %>% 
+      # reactive data for displaying country codes&flags of the last 5 IP addresses
+      live_country_reactive <- reactive({
+        ip_api(tail(live_data(),5)$ip_address) %>% 
+          select(country_code) %>% 
+          group_by(country_code) %>% 
+          count(country_code) %>% 
+          rename(count = n) %>% 
+          mutate(country_code = tolower(country_code))
+        
+      })
+      
+      # reactive data for displaying companies(ISP-Internet Service Providers) of the last 5 IP addresses
+      live_company_reactive <- reactive({
+        ip_api(tail(live_data(),5)$ip_address) %>% 
+          select(isp) %>% 
+          group_by(isp) %>% 
+          count(isp) %>% 
           rename(count = n)
       })
       
@@ -2061,43 +2073,6 @@ server <- function(input, output, session){
                 legend.position = "none")
       })
       
-      # show the information extracted from an individual IP that the user chooses
-      rv_ip <- reactiveValues(ip = data.frame())
-      
-      observeEvent(input$live_action_ip, {
-        
-        rv_ip$ip  <- ip_api(input$live_text_ip)
-      })
-      
-      # show the IP information in a data table
-      output$live_table_ip <- renderDataTable({
-        rv_ip$ip %>% datatable(rownames = FALSE,
-                               options = list(
-                                 autoWidth = TRUE,
-                                 lengthChange = FALSE,
-                                 scrollX = TRUE))
-      })
-      
-      observe({
-        if(interactive()){
-          updateSelectizeInput(session = session,
-                               inputId = "live_text_ip",
-                               server = TRUE,
-                               choices = live_data()$ip_address)
-        }
-      })
-      
-      # reactive data for displaying country codes&flags of the last 5 IP addresses
-      live_country_reactive <- reactive({
-        ip_api(tail(live_data(),5)$ip_address) %>% 
-          select(country_code) %>% 
-          group_by(country_code) %>% 
-          count(country_code) %>% 
-          rename(count = n) %>% 
-          mutate(country_code = tolower(country_code))
-        
-      })
-      
       # reactive plot for displaying country codes&flags of the last 5 IP addresses
       output$live_country <- renderPlot({
         
@@ -2118,11 +2093,60 @@ server <- function(input, output, session){
                 legend.position = "none")
       })
       
+      # reactive plot for displaying companies(ISP-Internet Service Providers) of the last 5 IP addresses
+      output$live_company <- renderPlot({
+        
+        validate(
+          need(!is.na(live_company_reactive()$isp), "The server is not available. Please try again later in a new session.")
+        )
+        
+        live_company_reactive() %>% 
+          ggplot(aes(x = isp, y = count)) +
+          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300", size = 5) +
+          labs(title = "IPs by Companies") +
+          theme_light() +
+          theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
+                axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                legend.position = "none")
+      })
+      
+      # show the information extracted from an individual IP that the user chooses
+      rv_ip <- reactiveValues(ip = data.frame())
+      
+      observeEvent(input$live_action_ip, {
+        updateSelectizeInput(session = session,
+                             inputId = "live_text_ip",
+                             server = TRUE,
+                             selected = input$live_text_ip,
+                             choices = live_data()$ip_address)
+        
+        validate(
+          need(length(input$live_text_ip) != 0, "")
+        )
+        rv_ip$ip  <- ip_api(input$live_text_ip)
+      })
+      
+      # show the IP information in a data table
+      output$live_table_ip <- renderDataTable({
+        
+        validate(
+          need(nrow(rv_ip$ip) > 0, "")
+        )
+        
+        rv_ip$ip %>% datatable(rownames = FALSE,
+                               options = list(
+                                 autoWidth = TRUE,
+                                 lengthChange = FALSE,
+                                 scrollX = TRUE))
+      })
+      
     } else { # if there is a .lock file in the working directory, read only the *unread* portion of the live log data, 
       # update .lock file accordingly for the next sessions
       
       # lock file value that corresponds to *unread* data
-      lock_file_value <- reactive({nrow(total_live_data())- read.table("log_files.log.lock")[1,1]})
+      lock_file_value <- reactive({nrow(total_live_data())- read.table("live_logs.log.lock")[1,1]})
       
       # show the # of total lines in the data and the # of unread data (in this case, they are different!
       # Total number of data is greater than the amount of *unread* data!)
@@ -2140,15 +2164,24 @@ server <- function(input, output, session){
       # show the last 10 lines of the unread data
       output$live_text <- renderPrint({
         
-        live_data() %>% as.data.frame() %>% tail(10) %>% print 
+        live_data() %>% as.data.frame() %>% tail(10) %>% print
         
       })
       
       session$onSessionEnded(function(){
         # write the updated .lock file value into already constructed .lock file
-        write_csv(length(readLines("log_files.log")) %>% as_tibble(),
-                  file = "C:/Users/Emre H/Desktop/TFM/SPARQL_Query_Dashboard/log_files.log.lock",
+        write_csv(length(readLines("live_logs.log")) %>% as_tibble(),
+                  file = "live_logs.log.lock",
                   col_names = FALSE)
+      })
+      
+      # reactive for live line chart
+      live_chart_reactive <- reactive({
+        live_data() %>%
+          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
+          group_by(seconds) %>% 
+          count(seconds) %>% 
+          rename(count = n)
       })
       
       # reactive for live HTTP requests of unread data
@@ -2193,12 +2226,23 @@ server <- function(input, output, session){
           rename(count = n)
       })
       
-      # reactive for live line chart
-      live_chart_reactive <- reactive({
-        live_data() %>%
-          mutate(seconds = lubridate::ymd_hms(live_data()$timestamp)) %>% 
-          group_by(seconds) %>% 
-          count(seconds) %>% 
+      # reactive data for displaying country codes&flags of the last 5 IP addresses
+      live_country_reactive <- reactive({
+        ip_api(tail(live_data(), 5)$ip_address) %>% 
+          select(country_code) %>% 
+          group_by(country_code) %>% 
+          count(country_code) %>% 
+          rename(count = n) %>% 
+          mutate(country_code = tolower(country_code))
+        
+      })
+      
+      # reactive data for displaying companies(ISP-Internet Service Providers) of the last 5 IP addresses
+      live_company_reactive <- reactive({
+        ip_api(tail(live_data(),5)$ip_address) %>% 
+          select(isp) %>% 
+          group_by(isp) %>% 
+          count(isp) %>% 
           rename(count = n)
       })
       
@@ -2300,43 +2344,6 @@ server <- function(input, output, session){
                 legend.position = "none")
       })
       
-      # show the information extracted from an individual IP that the user chooses
-      rv_ip <- reactiveValues(ip = data.frame())
-      
-      observeEvent(input$live_action_ip, {
-        
-        rv_ip$ip  <- ip_api(input$live_text_ip)
-      })
-      
-      # show the IP information in a data table
-      output$live_table_ip <- renderDataTable({
-        rv_ip$ip %>% datatable(rownames = FALSE,
-                               options = list(
-                                 autoWidth = TRUE,
-                                 lengthChange = FALSE,
-                                 scrollX = TRUE))
-      })
-      
-      observe({
-        if(interactive()){
-          updateSelectizeInput(session = session,
-                               inputId = "live_text_ip",
-                               server = TRUE, 
-                               choices = live_data()$ip_address)
-        }
-      })
-      
-      # reactive data for displaying country codes&flags of the last 5 IP addresses
-      live_country_reactive <- reactive({
-        ip_api(tail(live_data(), 5)$ip_address) %>% 
-          select(country_code) %>% 
-          group_by(country_code) %>% 
-          count(country_code) %>% 
-          rename(count = n) %>% 
-          mutate(country_code = tolower(country_code))
-        
-      })
-      
       # reactive plot for displaying country codes&flags of the last 5 IP addresses
       output$live_country <- renderPlot({
         
@@ -2355,6 +2362,55 @@ server <- function(input, output, session){
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
                 legend.position = "none")
+      })
+      
+      # reactive plot for displaying companies(ISP-Internet Service Providers) of the last 5 IP addresses
+      output$live_company <- renderPlot({
+        
+        validate(
+          need(!is.na(live_company_reactive()$isp), "The server is not available. Please try again later in a new session.")
+        )
+        
+        live_company_reactive() %>% 
+          ggplot(aes(x = isp, y = count)) +
+          geom_bar(width = 0.75, stat = "identity", col = "#99FF99", fill = "#99FF99")+ 
+          geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300", size = 5) +
+          labs(title = "IPs by Companies") +
+          theme_light() +
+          theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
+                axis.title.x = element_blank(),
+                axis.title.y = element_blank(),
+                legend.position = "none")
+      })
+      
+      # show the information extracted from an individual IP that the user chooses
+      rv_ip <- reactiveValues(ip = data.frame())
+      
+      observeEvent(input$live_action_ip, {
+        updateSelectizeInput(session = session,
+                             inputId = "live_text_ip",
+                             server = TRUE,
+                             selected = input$live_text_ip,
+                             choices = live_data()$ip_address)
+        
+        validate(
+          need(length(input$live_text_ip) != 0, "")
+        )
+        rv_ip$ip  <- ip_api(input$live_text_ip)
+      })
+      
+      # show the IP information in a data table
+      output$live_table_ip <- renderDataTable({
+        
+        validate(
+          need(nrow(rv_ip$ip) > 0, "")
+        )
+        
+        rv_ip$ip %>% datatable(rownames = FALSE,
+                               options = list(
+                                 autoWidth = TRUE,
+                                 lengthChange = FALSE,
+                                 scrollX = TRUE))
       })
     }
   }) 
