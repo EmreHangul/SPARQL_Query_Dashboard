@@ -65,7 +65,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                               selected = ifelse(length(args) == 0,
                                                                                                                                 str_extract(string = readLines("live_logs.log.conf")[1], pattern = "\\d+"),
                                                                                                                                 args[1])))),
-                                                                                  fluidRow(column(width = 12,
+                                                                                  fluidRow(column(width = 12, align = "center",
                                                                                                   verbatimTextOutput("live_text"))),
                                                                                   fluidRow(column(width = 12,
                                                                                                   wellPanel(selectizeInput(inputId = "live_text_ip",
@@ -1869,7 +1869,7 @@ server <- function(input, output, session){
     total_live_data <- reactiveFileReader( 
       intervalMillis = reactive({60000/as.numeric(input$live_numeric)}),
       session = session,
-      filePath = "live_logs.log",
+      filePath = paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[4], "\\../.*"), "live_logs.log"),
       readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
@@ -2170,7 +2170,7 @@ server <- function(input, output, session){
       
       session$onSessionEnded(function(){
         # write the updated .lock file value into already constructed .lock file
-        write_csv(length(readLines("live_logs.log")) %>% as_tibble(),
+        write_csv(length(readLines(paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[4], "\\../.*"), "live_logs.log"))) %>% as_tibble(),
                   file = "live_logs.log.lock",
                   col_names = FALSE)
       })
