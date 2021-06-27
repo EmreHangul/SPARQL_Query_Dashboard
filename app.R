@@ -7,6 +7,7 @@ library(ggplot2)
 library(dplyr)
 library(plotly)
 library(dashboardthemes)
+library(shinybusy)
 library(shinyFiles)
 library(shinyWidgets)
 library(rgeolocate)
@@ -26,7 +27,7 @@ if (.Platform$OS.type == "windows") {
 } else {
   my_ip <- system(command = "curl ifconfig.me", intern=TRUE)
 }
- 
+
 ################################DASHBOARD########################################
 
 ui <- dashboardPage(skin = "black",
@@ -35,13 +36,17 @@ ui <- dashboardPage(skin = "black",
                     dashboardSidebar(
                       sidebarMenu(
                         menuItem(tabName = "Home", text = "Home"),
-                        menuItem(tabName = "About", text = "About the App"))),
+                        menuItem(tabName = "About", text = "About"))),
                     dashboardBody(
                       shinyDashboardThemes(theme = "poor_mans_flatly"),
                       tags$head(tags$style(HTML(".shiny-output-error-validation {color: #FF9900; font-size: 20px; font-weight: bold}"))),
-                      tags$head(tags$style("#text{font-size: 18px;font-weight: bold}")),
-                      tags$head(tags$style("#text2{font-size: 18px;font-weight: bold}")),
-                      tags$head(tags$style("#live_text{width:1000px}")),
+                      tags$head(tags$style("#text {font-size: 18px;font-weight: bold}")),
+                      tags$head(tags$style("#text2 {font-size: 18px;font-weight: bold}")),
+                      tags$head(tags$style(".creator {margin: auto;background-color: #CCFFCC; width: 500px; height = 20px}")),
+                      tags$head(tags$style(".creator h3 {text-align: center;font-family: Garamond, serif; font-weight: bold; font-size:20px}")),
+                      tags$head(tags$style(".image {text-align: center}")),
+                      tags$head(tags$style(".about h4 {font-family: Garamond, serif}")),
+                      tags$head(tags$style("#live_text{width:1200px}")),
                       tabItems(
                         tabItem(tabName = "Home", 
                                 fluidRow(
@@ -61,7 +66,7 @@ ui <- dashboardPage(skin = "black",
                                                                                            column(width = 4,offset = 2,
                                                                                                   selectInput(inputId = "live_numeric",
                                                                                                               label = "Change Rate of Update(per minute)",
-                                                                                                              choices = c("1","5","10","15","20","30","60","90","120","180","240","300"),
+                                                                                                              choices = c("1","5","10","15","20","30","60","90","120","180"),
                                                                                                               selected = ifelse(length(args) == 0,
                                                                                                                                 str_extract(string = readLines("live_logs.log.conf")[1], pattern = "\\d+"),
                                                                                                                                 args[1])))),
@@ -93,7 +98,7 @@ ui <- dashboardPage(skin = "black",
                                                                                            column(width = 6,
                                                                                                   plotOutput("live_company"))))))
                                                   )),
-                                         tabPanel(title = "Files", shinybusy::add_busy_spinner(spin = "fading-circle", color = "green"), 
+                                         tabPanel(title = "Files", add_busy_spinner(spin = "fading-circle", color = "green"), 
                                                   fluidRow(column(width = 12,
                                                                   align = "center",
                                                                   shinyFilesButton(id = "file",
@@ -106,7 +111,7 @@ ui <- dashboardPage(skin = "black",
                                                                   shinyDirButton(id = "dir",
                                                                                  label = "Select Directory",
                                                                                  title = "Please select a directory",
-                                                                                 allowDirCreate = TRUE,
+                                                                                 allowDirCreate = FALSE,
                                                                                  icon = icon(lib = "font-awesome",
                                                                                              name = "folder-open"),
                                                                                  viewtype = "detail"),
@@ -136,11 +141,11 @@ ui <- dashboardPage(skin = "black",
                                                                   align = "center",
                                                                   conditionalPanel(
                                                                     condition = "output.conddir==true",
-                                                                    wellPanel("Selected file name:",
+                                                                    wellPanel("Selected file(s) name(s):",
                                                                               textOutput("text")),
                                                                     dataTableOutput("table")))
                                                   )),
-                                         tabPanel(title = "Requests", shinybusy::add_busy_spinner(spin = "fading-circle", color = "green"),
+                                         tabPanel(title = "Requests", add_busy_spinner(spin = "fading-circle", color = "green"),
                                                   fluidRow(column(width = 12,
                                                                   tabBox(width = 12,
                                                                          tabPanel("Requests Over Time",
@@ -157,7 +162,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                        choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
                                                                                                        selected = "GET"),
                                                                                            radioButtons(inputId = "radio_Requests_1",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))
                                                                          ),
@@ -175,7 +180,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                        choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
                                                                                                        selected = "GET"),
                                                                                            radioButtons(inputId = "radio_Requests_2",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))),
                                                                          tabPanel("User Agents",
@@ -208,13 +213,12 @@ ui <- dashboardPage(skin = "black",
                                                                                                        choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
                                                                                                        selected = "GET"),
                                                                                            radioButtons(inputId = "radio_Requests_3",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))),
                                                                          tabPanel("IP Addresses",
                                                                                   fluidRow(
                                                                                     column(width = 9,
-                                                                                           textOutput("textsa"),
                                                                                            plotlyOutput("plot_Requests_4"),
                                                                                            dataTableOutput("table_Requests_4")),
                                                                                     column(width = 3, 
@@ -247,10 +251,10 @@ ui <- dashboardPage(skin = "black",
                                                                                                        choices = c("GET", "POST", "PUT", "PUSH", "HEAD", "OPTIONS", "DEBUG"),
                                                                                                        selected = "GET"),
                                                                                            radioButtons(inputId = "radio_Requests_4",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))))))),
-                                         tabPanel(title = "Queries", shinybusy::add_busy_spinner(spin = "fading-circle", color = "green"),
+                                         tabPanel(title = "Queries", add_busy_spinner(spin = "fading-circle", color = "green"),
                                                   fluidRow(column(width = 12,
                                                                   tabBox(width = 12,
                                                                          tabPanel("Queries Over Time",
@@ -266,7 +270,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                        label = "Select a SPARQL Query Type:",
                                                                                                        choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
                                                                                            radioButtons(inputId = "radio_Queries_1",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))
                                                                                   
@@ -284,7 +288,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                        label = "Select a SPARQL Query Type:",
                                                                                                        choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
                                                                                            radioButtons(inputId = "radio_Queries_2",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))),
                                                                          tabPanel("User Agents",
@@ -316,7 +320,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                        label = "Select a SPARQL Query Type:",
                                                                                                        choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
                                                                                            radioButtons(inputId = "radio_Queries_3",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day")))),
                                                                          tabPanel("IP Addresses",
@@ -353,17 +357,40 @@ ui <- dashboardPage(skin = "black",
                                                                                                        label = "Select a SPARQL Query Type:",
                                                                                                        choices = c("SELECT", "CONSTRUCT", "DESCRIBE", "ASK")),
                                                                                            radioButtons(inputId = "radio_Queries_4",
-                                                                                                        label = "Select a date period:",
+                                                                                                        label = "Select a time period:",
                                                                                                         choices = c("Year","Month","Day","Hour"),
                                                                                                         selected = "Day"))))))))))),
                         tabItem(tabName = "About",
-                                wellPanel(
-                                  h4("--> This application is created to visualize the number of SPARQL queries
-                 made by the users throughout....."))
-                        )
-                      )
-                    )
-)
+                                tags$div(class = "image",
+                                         tags$img(height = 300,
+                                                  width = 300,
+                                                  src = "https://bimerr.eu/wp-content/uploads/2019/03/Universidad-Polit%C3%A9cnica-De-Madrid-Logo.jpg")),
+                                tags$div(class = "about",
+                                         tags$h4("This application is created to visualize the HTTP requests related to SPARQL queries
+                                     made through Apache servers. The main sources of data are Apache log files that 
+                                     include necessary information for such visualizations."),
+                                         br(),
+                                         tags$h4(HTML("&rAarr;"), 'The log files include several important fields such as "timestamp", "IP address", "HTTP Requests", "User-Agents", and so on.'),
+                                         tags$h4(HTML("&rAarr;"), 'This application uses these information to create line charts and data tables that can be
+                                          interactively used and changed by the users.'),
+                                         tags$h4(HTML("&rAarr;"), 'Users can change the type of HTTP requests and type of SPARQL queries within those requests
+                                          to produce meaningful graphs.'),
+                                         tags$h4(HTML("&rAarr;"), 'Using the configuration files given, the application can be made to display information from a live log file in a 
+                                          local directory and show various related information simultaneously.')),
+                                br(),
+                                tags$div(class = "image",
+                                         tags$img(height = 200,
+                                                  width = 700,
+                                                  src = "https://media.istockphoto.com/vectors/stock-chart-vector-id1087607772?k=6&m=1087607772&s=612x612&w=0&h=bgZWzRMdw1ziEeKnKIhGXET-pMDPshPkNr__BZ0BRgs=")),
+                                tags$div(class = "creator",
+                                         tags$h3("App Creator: Emre Hangul")),
+                                tags$div(class = "creator",
+                                         tags$h3("Institution: Universidad Politecnica de Madrid")),
+                                tags$div(class = "creator",
+                                         tags$h3("Release Date: June 2021")),
+                                tags$div(class = "creator",
+                                         tags$h3("For more information, please refer to/contact with: ", a(href = "https://github.com/EmreHangul/SPARQL_Query_Dashboard", "github/EmreHangul")))
+                        ))))
 
 ################################SERVER###########################################
 
@@ -424,143 +451,124 @@ server <- function(input, output, session){
                         "selected-text-format" = "count>3"
                       ))
   })
-
-    # if the user wishes to see individual (or combined) log files on a line chart, do the following:
-    observeEvent(input$construct_line_chart,{
-      
-      if(input$construct_line_chart > 0){
-        rv$last_button = "chart"
-      }
-      
-      # parse the file input into a more usable format
-      input_d <- parseDirPath(roots = volumes,
-                              input$dir)
-      
-      # extract the names of the files in the selected directory
-      files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
-      
-      # validate that at least one file should be selected to construct the line chart
-      validate(
-        need(!is.na(input$picker), " ")
-      )
-      files_selected <- files[files == input$picker]
-      
-      # construct a new progress bar
-      progress <- Progress$new(session, min = 0, max = 100)
-      on.exit(progress$close())
-      
-      # load the data into a list using "lapply", also show a progress bar
-      data_list <- list()
-      for (i in 1:length(files_selected)) {
-        data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
-        progress$set(value = 100*(i/length(files_selected)),
-                     message = "Please wait while the selected files are loaded.",
-                     detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
-      }
-      
-      # load the data into the reactive data
-      rv$plot_data <- rbindlist(data_list)
-      
-      rv$plot_data$days <- as.Date(format(as.POSIXct(rv$plot_data$timestamp), "%Y-%m-%d"))
-      
-    })
-
-    # if the user wishes to see individual (or combined) log files in a data frame, do the following:
-    observeEvent(input$construct_data_frame,{
-      
-      if(input$construct_data_frame > 0){
-        rv$last_button = "frame"
-      }
-      
-      # parse the file input into a more usable format
-      input_d <- parseDirPath(roots = volumes,
-                              input$dir)
-      
-      # extract the names of the files in the selected directory
-      files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
-
-      # validate that at least one file should be selected to construct the data frame
-      validate(
-        need(!is.na(input$picker), " ")
-      )
-      # construct a list of all the data from the selected log files
-      files_selected <- files[files == input$picker]
-      
-      # construct a new progress bar
-      progress <- Progress$new(session, min = 0, max = 100)
-      on.exit(progress$close())
-      
-      # load the data into a list using "lapply", also show a progress bar
-      data_list <- list()
-      for (i in 1:length(files_selected)) {
-        data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
-        progress$set(value = 100*(i/length(files_selected)),
-                     message = "Please wait while the selected files are loaded.",
-                     detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
-      }
-      
-      # load the data into the reactive data
-      rv$log_data <- rbindlist(data_list)
-      
-      # Update the corresponding data into solicited format
-      if(length(rv$log_data) != 0){
-        
-        rv$log_data$year <- format(as.POSIXct(rv$log_data$timestamp), "%Y")
-        rv$log_data$month <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m")
-        rv$log_data$day <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d")
-        rv$log_data$hour <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d %H:%M")
-        
-        requests <- split_clf(rv$log_data$request) %>% 
-          cbind(year = rv$log_data$year,
-                month = rv$log_data$month,
-                day = rv$log_data$day, 
-                hour = rv$log_data$hour,
-                status = rv$log_data$status_code,
-                user_agent = rv$log_data$user_agent,
-                ip_address = rv$log_data$ip_address)
-        
-        rv$request <- requests
-        
-        # update selectize inputs for user agents and ip addresses
-        updateSelectizeInput(session,
-                             inputId = "selectize_Requests_3",
-                             choices = levels(as.factor(rv$request$user_agent)),
-                             server = TRUE)
-        updateSelectizeInput(session,
-                             inputId = "selectize_Queries_3",
-                             choices = levels(as.factor(rv$request$user_agent)),
-                             server = TRUE)
-        updateSelectizeInput(session,
-                             inputId = "selectize_Requests_4",
-                             choices = levels(as.factor(rv$request$ip_address)),
-                             server = TRUE)
-        updateSelectizeInput(session,
-                             inputId = "selectize_Queries_4",
-                             choices = levels(as.factor(rv$request$ip_address)),
-                             server = TRUE)
-      }
-    })
   
-  output$picker_plot <- renderPlotly({
+  # if the user wishes to see individual (or combined) log files on a line chart, do the following:
+  observeEvent(input$construct_line_chart,{
     
+    # if "construct line chart" button is clicked, update the conditional panel condition
+    if(input$construct_line_chart > 0){
+      rv$last_button = "chart"
+    }
+    
+    # parse the file input into a more usable format
+    input_d <- parseDirPath(roots = volumes,
+                            input$dir)
+    
+    # extract the names of the files in the selected directory
+    files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
+    
+    # validate that at least one file should be selected to construct the line chart
     validate(
-      need(nrow(rv$plot_data) > 0, " ")
+      need(!is.na(input$picker), " ")
     )
+    files_selected <- files[files == input$picker]
     
-      ggplotly(rv$plot_data %>% 
-        group_by(days) %>% 
-        count(days) %>% 
-        rename(count = n) %>% 
-        ggplot(aes(x = days, y = count)) +
-        geom_line(col = "#00FF00")+ 
-        geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
-        labs(title = "HTTP Requests over Time",
-             x = "Days",
-             y = "Total Requests") +
-        theme_light() +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1),
-              axis.title.x = element_blank(),
-              axis.title.y = element_text(size = 1.5)),tooltip = c("y","x"))
+    # construct a new progress bar
+    progress <- Progress$new(session, min = 0, max = 100)
+    on.exit(progress$close())
+    
+    # load the data into a list using "lapply", also show a progress bar
+    data_list <- list()
+    for (i in 1:length(files_selected)) {
+      data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
+      progress$set(value = 100*(i/length(files_selected)),
+                   message = "Please wait while the selected files are loaded.",
+                   detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
+    }
+    
+    # load the data into the reactive data
+    rv$plot_data <- rbindlist(data_list)
+    
+    # add "days" field to the reactive line chart data
+    rv$plot_data$days <- as.Date(format(as.POSIXct(rv$plot_data$timestamp), "%Y-%m-%d"))
+    
+  })
+  
+  # if the user wishes to see individual (or combined) log files in a data frame, do the following:
+  observeEvent(input$construct_data_frame,{
+    
+    # if "construct data frame" button is clicked, update the conditional panel condition
+    if(input$construct_data_frame > 0){
+      rv$last_button = "frame"
+    }
+    
+    # parse the file input into a more usable format
+    input_d <- parseDirPath(roots = volumes,
+                            input$dir)
+    
+    # extract the names of the files in the selected directory
+    files <- list.files(input_d, pattern = "*.gz | *.log", full.names = FALSE)
+    
+    # validate that at least one file should be selected to construct the data frame
+    validate(
+      need(!is.na(input$picker), " ")
+    )
+    # construct a list of all the data from the selected log files
+    files_selected <- files[files == input$picker]
+    
+    # construct a new progress bar
+    progress <- Progress$new(session, min = 0, max = 100)
+    on.exit(progress$close())
+    
+    # load the data into a list using "lapply", also show a progress bar
+    data_list <- list()
+    for (i in 1:length(files_selected)) {
+      data_list[[i]] <- as.list(read_combined(file = paste0(input_d, "/", files_selected[i])))
+      progress$set(value = 100*(i/length(files_selected)),
+                   message = "Please wait while the selected files are loaded.",
+                   detail = paste0("Current progress: ", round(100*(i/length(files_selected)), 0), "%"))
+    }
+    
+    # load the data into the reactive data
+    rv$log_data <- rbindlist(data_list)
+    
+    # Update the corresponding data into solicited format
+    if(length(rv$log_data) != 0){
+      
+      rv$log_data$year <- format(as.POSIXct(rv$log_data$timestamp), "%Y")
+      rv$log_data$month <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m")
+      rv$log_data$day <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d")
+      rv$log_data$hour <- format(as.POSIXct(rv$log_data$timestamp), "%Y-%m-%d %H:%M")
+      
+      requests <- split_clf(rv$log_data$request) %>% 
+        cbind(year = rv$log_data$year,
+              month = rv$log_data$month,
+              day = rv$log_data$day, 
+              hour = rv$log_data$hour,
+              status = rv$log_data$status_code,
+              user_agent = rv$log_data$user_agent,
+              ip_address = rv$log_data$ip_address)
+      
+      rv$request <- requests
+      
+      # update selectize inputs for user agents and ip addresses
+      updateSelectizeInput(session,
+                           inputId = "selectize_Requests_3",
+                           choices = levels(as.factor(rv$request$user_agent)),
+                           server = TRUE)
+      updateSelectizeInput(session,
+                           inputId = "selectize_Queries_3",
+                           choices = levels(as.factor(rv$request$user_agent)),
+                           server = TRUE)
+      updateSelectizeInput(session,
+                           inputId = "selectize_Requests_4",
+                           choices = levels(as.factor(rv$request$ip_address)),
+                           server = TRUE)
+      updateSelectizeInput(session,
+                           inputId = "selectize_Queries_4",
+                           choices = levels(as.factor(rv$request$ip_address)),
+                           server = TRUE)
+    }
   })
   
   # update the reactive data when an input file is selected (from select file)
@@ -570,11 +578,8 @@ server <- function(input, output, session){
     input_file <- parseFilePaths(roots = volumes,
                                  input$file)
     
-    # construct a list of all the data from the selected log files
-    initial_data <- lapply(input_file$datapath, read_combined)
-    
     # update the reactive data with the corresponding log file
-    rv$log_data <- rbindlist(initial_data)
+    rv$log_data <- rbindlist(lapply(input_file$datapath, read_combined))
     
     # if a file is selected, update the corresponding data into solicited format
     if(length(rv$log_data) != 0){
@@ -687,7 +692,6 @@ server <- function(input, output, session){
         count(.[t]) %>% 
         rename(count = n)
     }
-    
   })
   
   # Reactive data for http requests (Status Codes)
@@ -741,6 +745,7 @@ server <- function(input, output, session){
            message = "No such requests are found! Please try another type of request.")
     )
     
+    # if no individual user-agent is selected, show the general view with top 10 most/least used user-agents
     if(input$selectize_Requests_3 == ""){
       
       validate(
@@ -760,7 +765,7 @@ server <- function(input, output, session){
         rbind(head(., input$numeric_Requests_3), data.frame(user_agent = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Requests_3)) %>% 
         tail(2 * input$numeric_Requests_3 + 1)
       
-    } else {
+    } else {# in this case where an individual user-agent is selected, create user agent-specific graph
       
       # return an error message if the solicited requests are not available.
       validate(
@@ -805,6 +810,7 @@ server <- function(input, output, session){
     
     t <- tolower(input$radio_Requests_4)
     
+    # if "aggregate by companies" checkbox is checked, then produce company-specific stats and graphs
     if(input$checkbox_Requests_4 == TRUE){
       
       # return an error message if the solicited requests are not available.
@@ -813,6 +819,7 @@ server <- function(input, output, session){
              message = "No such requests are found! Please try another type of request.")
       )
       
+      # if no single company is selected, then produce a general view of top 10 company IPs with the most/least requests
       if(input$selectize_Requests_4 == ""){
         
         validate(
@@ -832,7 +839,7 @@ server <- function(input, output, session){
           rbind(head(., input$numeric_Requests_4), data.frame(ip_companies = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Requests_4)) %>% 
           tail(2 * input$numeric_Requests_4 + 1)
         
-      } else {
+      } else {# if a single company is selected, then produce company-specific stats and graphs
         
         # return an error message if the solicited requests are not available.
         validate(
@@ -873,7 +880,7 @@ server <- function(input, output, session){
         }
       }
       
-    } else {
+    } else {# in this case where the "aggregate by companies" is not checked, then produce stats-graphs for all IPs
       
       # return an error message if the solicited requests are not available.
       validate(
@@ -1032,6 +1039,7 @@ server <- function(input, output, session){
            message = "No such queries are found! Please try another type of query.")
     )
     
+    # if no individual user-agent is selected, show the general view with top 10 most/least used user-agents
     if(input$selectize_Queries_3 == ""){
       
       validate(
@@ -1051,7 +1059,7 @@ server <- function(input, output, session){
         rbind(head(., input$numeric_Queries_3), data.frame(user_agent = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Queries_3)) %>% 
         tail(2 * input$numeric_Queries_3 + 1)
       
-    } else {
+    } else {# in this case where an individual user-agent is selected, create user agent-specific graph
       
       # return an error message if the solicited requests are not available.
       validate(
@@ -1104,6 +1112,7 @@ server <- function(input, output, session){
              message = "No such queries are found! Please try another type of query.")
       )
       
+      # if no single company is selected, then produce a general view of top 10 company IPs with the most/least requests
       if(input$selectize_Queries_4 == ""){
         
         validate(
@@ -1123,7 +1132,7 @@ server <- function(input, output, session){
           rbind(head(., input$numeric_Queries_4), data.frame(ip_companies = "mean", count = as.integer(mean(.$count))), tail(., input$numeric_Queries_4)) %>% 
           tail(2 * input$numeric_Queries_4 + 1)
         
-      } else {
+      } else {# if a single company is selected, then produce company-specific stats and graphs
         
         # return an error message if the solicited requests are not available.
         validate(
@@ -1163,7 +1172,7 @@ server <- function(input, output, session){
             rename(count = n)
         }
       }
-    } else {
+    } else {# in this case where the "aggregate by companies" is not checked, then produce stats-graphs for all IPs
       
       # return an error message if the solicited requests are not available.
       validate(
@@ -1231,7 +1240,7 @@ server <- function(input, output, session){
     }
   })
   
-  # Update the selectize inputs to list either the whole IP addresses or company IPs
+  # Update the selectize inputs to list either the whole IP addresses or company IPs via the checkboxes
   observe({
     if(input$checkbox_Requests_4 == FALSE){
       updateSelectizeInput(session,
@@ -1386,14 +1395,17 @@ server <- function(input, output, session){
   })
   
   # display the name of the selected file
-  output$text <- renderText({
+  output$text <- renderPrint({
     # if the last element of input$file is integer (it means no file is currently selected), return warning.
     validate(
       need(!is.integer(tail(input$file,1)), "No file is currently selected. Please select a file.")
     )
     
-    # return the name of the selected file
-    tail(unlist(input$file$files),1)
+    # show the name of the selected files
+    for (i in 0:(length(input$file$files)-1)) {
+      i <- as.character(i)
+      cat(unlist(input$file$files[[i]]) %>% tail(1),"\t")
+    }
     
   })
   
@@ -1405,7 +1417,6 @@ server <- function(input, output, session){
     )
     input_dir <- parseDirPath(roots = volumes, input$dir)
     print(input_dir)
-    
   })
   
   # show the input data as table (from selected file)
@@ -1416,8 +1427,7 @@ server <- function(input, output, session){
                               options = list(
                                 lengthMenu = c(5,10,20,50),
                                 autoWidth = TRUE,
-                                scrollX = TRUE,
-                                columnDefs = list(list(width = '4%', targets = c(1,2,3)))),
+                                scrollX = TRUE),
                               filter = "top")
     
   })
@@ -1428,8 +1438,7 @@ server <- function(input, output, session){
                               options = list(
                                 lengthMenu = c(5,10,20,50),
                                 autoWidth = TRUE,
-                                scrollX = TRUE,
-                                columnDefs = list(list(width = "4%", targets = c(1,2,3)))),
+                                scrollX = TRUE),
                               filter = "top")
   })
   
@@ -1448,6 +1457,30 @@ server <- function(input, output, session){
                                                       autoWidth = TRUE,
                                                       lengthChange = FALSE,
                                                       scrollX = TRUE))
+  })
+  
+  # construct line chart when the "construct line chart" button is clicked after a directory is selected
+  output$picker_plot <- renderPlotly({
+    
+    # validation for the plot to work smoothly
+    validate(
+      need(nrow(rv$plot_data) > 0, " ")
+    )
+    
+    ggplotly(rv$plot_data %>% 
+               group_by(days) %>% 
+               count(days) %>% 
+               rename(count = n) %>% 
+               ggplot(aes(x = days, y = count)) +
+               geom_line(col = "#00FF00")+ 
+               geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+               labs(title = "HTTP Requests over Time",
+                    x = "Days",
+                    y = "Total Requests") +
+               theme_light() +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                     axis.title.x = element_blank(),
+                     axis.title.y = element_text(size = 1.5)),tooltip = c("y","x"))
   })
   
   # Interactive plot for HTTP Requests (Over time)
@@ -1476,6 +1509,7 @@ server <- function(input, output, session){
   # Interactive plot for HTTP Requests (Status Codes)
   output$plot_Requests_2 <- renderPlotly({
     
+    # x and y axes parameters to be used in the 'layout' function
     x <- list(
       title = list(text = paste0("\nTime Interval(",tolower(input$radio_Requests_2),")"),
                    standoff = 15L)
@@ -1560,6 +1594,7 @@ server <- function(input, output, session){
   # Interactive plot for HTTP Requests (IP Addresses)
   output$plot_Requests_4 <- renderPlotly({
     
+    # construct company specific plots
     if(input$checkbox_Requests_4 == TRUE){
       
       # return an error message if the date ranges for rv_Requests_4() is not applicable.
@@ -1608,7 +1643,7 @@ server <- function(input, output, session){
                   axis.title.y = element_text(size = 13)), tooltip = c("y","x"))
         
       }
-    } else {
+    } else {# construct individual IP plots
       
       # return an error message if the date ranges for rv_Requests_4() is not applicable.
       validate(
@@ -1675,13 +1710,14 @@ server <- function(input, output, session){
         theme(axis.text.x = element_text(angle = 90, hjust = 1),
               axis.title.x = element_text(size = 13),
               axis.title.y = element_text(size = 13)), tooltip = c("y","x")) %>% layout(yaxis = list(title = 
-                                                                                                        list(text = "Number of Requests",
-                                                                                                             standoff = 20L)))
+                                                                                                       list(text = "Number of Requests",
+                                                                                                            standoff = 20L)))
   })
   
   # Interactive plot for SPARQL Queries (Status Codes)
   output$plot_Queries_2 <- renderPlotly({
     
+    # x and y axes parameters to be used in the 'layout' function
     x <- list(
       title = list(text = paste0("\nTime Interval(",tolower(input$radio_Requests_2),")"),
                    standoff = 15L)
@@ -1865,12 +1901,12 @@ server <- function(input, output, session){
   
   ########################## Implementation of the Live Functionality  ##########################
   
-    # read the lines of the live log file
-    total_live_data <- reactiveFileReader( 
-      intervalMillis = reactive({60000/as.numeric(input$live_numeric)}),
-      session = session,
-      filePath = paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[4], "\\../.*"), "live_logs.log"),
-      readFunc = read_combined)
+  # read the lines of the live log file
+  total_live_data <- reactiveFileReader( 
+    intervalMillis = reactive({60000/as.numeric(input$live_numeric)}),
+    session = session,
+    filePath = paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[6], "\\../.*"), "live_logs.log"),
+    readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
   observe({    
@@ -1889,11 +1925,11 @@ server <- function(input, output, session){
         lock_file_value()
       })
       
-      # reactive expressions and plots using all of the live data
+      # construct a reactive object using all of the live data
       live_data <- reactive({total_live_data()})
       
+      # when the user closes the application, write the number of total data to a .lock file
       session$onSessionEnded(function(){
-        # write the .lock file value into a newly constructed .lock file
         write_csv(isolate(nrow(live_data())) %>% as_tibble(),
                   file = "live_logs.log.lock",
                   col_names = FALSE)
@@ -2011,6 +2047,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2030,6 +2067,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2051,6 +2089,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2070,6 +2109,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2090,6 +2130,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2109,23 +2150,30 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
-      # show the information extracted from an individual IP that the user chooses
+      # create a reactive object to later show the information extracted from an individual IP
       rv_ip <- reactiveValues(ip = data.frame())
       
       observeEvent(input$live_action_ip, {
+        
+        # when the "apply" button in "live data" tab is clicked, update the selectize input to include all 
+        # of the IP addresses found so far
         updateSelectizeInput(session = session,
                              inputId = "live_text_ip",
                              server = TRUE,
                              selected = input$live_text_ip,
                              choices = live_data()$ip_address)
         
+        # to show the IP information, first there should be an individual IP present.
         validate(
           need(length(input$live_text_ip) != 0, "")
         )
+        
         rv_ip$ip  <- ip_api(input$live_text_ip)
+        
       })
       
       # show the IP information in a data table
@@ -2168,9 +2216,9 @@ server <- function(input, output, session){
         
       })
       
+      # when the application is closed, simultaneously write the total number of lines in the live file 
       session$onSessionEnded(function(){
-        # write the updated .lock file value into already constructed .lock file
-        write_csv(length(readLines(paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[4], "\\../.*"), "live_logs.log"))) %>% as_tibble(),
+        write_csv(length(readLines(paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[6], "\\../.*"), "live_logs.log"))) %>% as_tibble(),
                   file = "live_logs.log.lock",
                   col_names = FALSE)
       })
@@ -2282,6 +2330,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2301,6 +2350,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2322,6 +2372,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2341,6 +2392,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2361,6 +2413,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2380,6 +2433,7 @@ server <- function(input, output, session){
           theme(axis.text = element_text(angle = 90, hjust = 1, size = 15),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank(),
+                plot.title = element_text(size = 18),
                 legend.position = "none")
       })
       
@@ -2387,16 +2441,22 @@ server <- function(input, output, session){
       rv_ip <- reactiveValues(ip = data.frame())
       
       observeEvent(input$live_action_ip, {
+        
+        # when the "apply" button in "live data" tab is clicked, update the selectize input to include all 
+        # of the IP addresses found so far
         updateSelectizeInput(session = session,
                              inputId = "live_text_ip",
                              server = TRUE,
                              selected = input$live_text_ip,
                              choices = live_data()$ip_address)
         
+        # to show the IP information, first there should be an individual IP present.
         validate(
           need(length(input$live_text_ip) != 0, "")
         )
+        
         rv_ip$ip  <- ip_api(input$live_text_ip)
+        
       })
       
       # show the IP information in a data table
