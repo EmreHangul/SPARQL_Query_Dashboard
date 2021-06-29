@@ -137,15 +137,26 @@ ui <- dashboardPage(skin = "black",
                                                                       plotlyOutput("picker_plot")),
                                                                     conditionalPanel(
                                                                       condition = 'output.condplot=="frame"',
-                                                                      dataTableOutput("table2"))))),
+                                                                      dataTableOutput("table_2"))))),
                                                   fluidRow(column(width = 12, 
                                                                   align = "center",
                                                                   conditionalPanel(
                                                                     condition = "output.conddir==true",
                                                                     wellPanel("Selected file(s) name(s):",
                                                                               textOutput("text")),
-                                                                    dataTableOutput("table")))
-                                                  )),
+                                                                    conditionalPanel(condition = "output.condfile==false",
+                                                                    actionButton(inputId = "construct_data_frame_2",
+                                                                                 label = "Construct Data Frame",
+                                                                                 icon = icon("table")),
+                                                                    actionButton(inputId = "construct_line_chart_2",
+                                                                                 label = "Construct Line Chart",
+                                                                                 icon = icon("chart-line")),
+                                                                    conditionalPanel(
+                                                                      condition = 'output.condplot_2=="chart"',
+                                                                      plotlyOutput("picker_plot_2")),
+                                                                    conditionalPanel(
+                                                                      condition = 'output.condplot_2=="frame"',
+                                                                      dataTableOutput("table"))))))),
                                          tabPanel(title = "Requests", add_busy_spinner(spin = "fading-circle", color = "green"),
                                                   fluidRow(column(width = 12,
                                                                   tabBox(width = 12,
@@ -419,16 +430,32 @@ server <- function(input, output, session){
     is.integer(tail(input$dir,1))
   })
   
-  # update conditional panel condition when "construct data frame" button is/isn't clicked
+  # update conditional panel condition when "select file" button is clicked
+  output$condfile <- reactive({
+    is.integer(tail(input$file,1))
+  })
+  
+  # update conditional panel condition when "construct data frame" button is/isn't clicked (from directory)
   output$condplot <- reactive({
     rv$last_button
   })
   
-  # output options for "picker input" conditional panel
+  # update conditional panel condition when "construct data frame" button is/isn't clicked (from file)
+  output$condplot_2 <- reactive({
+    rv$last_button
+  })
+  
+  # output options for "select directory" conditional panel
   outputOptions(output,"conddir",suspendWhenHidden = FALSE)
   
-  # output options for "picker input" conditional panel
+  # output options for "select file" conditional panel
+  outputOptions(output,"condfile",suspendWhenHidden = FALSE)
+  
+  # output options for "construct data frame vs chart" conditional panel
   outputOptions(output,"condplot",suspendWhenHidden = FALSE)
+  
+  # output options for "construct data frame vs chart- 2" conditional panel
+  outputOptions(output,"condplot_2",suspendWhenHidden = FALSE)
   
   # initialization of reactive input data
   rv <- reactiveValues(log_data = data.frame(),
@@ -495,7 +522,40 @@ server <- function(input, output, session){
     
   })
   
-  # if the user wishes to see individual (or combined) log files in a data frame, do the following:
+  # if the user wishes to see individual (or combined) log files on a line chart, do the following (from file):
+  observeEvent(input$construct_line_chart_2,{
+    
+    # if "construct line chart" button is clicked, update the conditional panel condition
+    if(input$construct_line_chart_2 > 0){
+      rv$last_button = "chart"
+    }
+    
+    # parse the file input into a more usable format
+    input_file <- parseFilePaths(roots = volumes,
+                                 input$file)
+    
+    # construct a new progress bar
+    progress <- Progress$new(session, min = 0, max = 100)
+    on.exit(progress$close())
+    
+    # load the data into a list using "lapply", also show a progress bar
+    data_list <- list()
+    for (i in 1:length(input_file$datapath)) {
+      data_list[[i]] <- as.list(read_combined(file = input_file$datapath[i]))
+      progress$set(value = 100*(i/length(input_file$datapath)),
+                   message = "Please wait while the selected files are loaded.",
+                   detail = paste0("Current progress: ", round(100*(i/length(input_file$datapath)), 0), "%"))
+    }
+    
+    # load the data into the reactive data
+    rv$plot_data <- rbindlist(data_list)
+    
+    # add "days" field to the reactive line chart data
+    rv$plot_data$days <- as.Date(format(as.POSIXct(rv$plot_data$timestamp), "%Y-%m-%d"))
+    
+  })
+  
+  # if the user wishes to see individual (or combined) log files in a data frame, do the following (from directory):
   observeEvent(input$construct_data_frame,{
     
     # if "construct data frame" button is clicked, update the conditional panel condition
@@ -572,17 +632,35 @@ server <- function(input, output, session){
     }
   })
   
-  # update the reactive data when an input file is selected (from select file)
-  observeEvent(input$file,{
+  # if the user wishes to see individual (or combined) log files in a data frame, do the following (from file):
+  observeEvent(input$construct_data_frame_2,{
+    
+    # if "construct data frame" button is clicked, update the conditional panel condition
+    if(input$construct_data_frame_2 > 0){
+      rv$last_button = "frame"
+    }
     
     # parse the file input into a more usable format
     input_file <- parseFilePaths(roots = volumes,
                                  input$file)
     
-    # update the reactive data with the corresponding log file
-    rv$log_data <- rbindlist(lapply(input_file$datapath, read_combined))
+    # construct a new progress bar
+    progress <- Progress$new(session, min = 0, max = 100)
+    on.exit(progress$close())
     
-    # if a file is selected, update the corresponding data into solicited format
+    # load the data into a list using "lapply", also show a progress bar
+    data_list <- list()
+    for (i in 1:length(input_file$datapath)) {
+      data_list[[i]] <- as.list(read_combined(file = input_file$datapath[i]))
+      progress$set(value = 100*(i/length(input_file$datapath)),
+                   message = "Please wait while the selected files are loaded.",
+                   detail = paste0("Current progress: ", round(100*(i/length(input_file$datapath)), 0), "%"))
+    }
+    
+    # load the data into the reactive data
+    rv$log_data <- rbindlist(data_list)
+    
+    # Update the corresponding data into solicited format
     if(length(rv$log_data) != 0){
       
       rv$log_data$year <- format(as.POSIXct(rv$log_data$timestamp), "%Y")
@@ -605,22 +683,18 @@ server <- function(input, output, session){
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_3",
                            choices = levels(as.factor(rv$request$user_agent)),
-                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_3",
                            choices = levels(as.factor(rv$request$user_agent)),
-                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_4",
                            choices = levels(as.factor(rv$request$ip_address)),
-                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_4",
                            choices = levels(as.factor(rv$request$ip_address)),
-                           selected = "",
                            server = TRUE)
     }
   })
@@ -1434,7 +1508,7 @@ server <- function(input, output, session){
   })
   
   # show the input data as table (from selected directory)
-  output$table2 <- renderDataTable({
+  output$table_2 <- renderDataTable({
     rv$log_data %>% datatable(rownames = FALSE,
                               options = list(
                                 lengthMenu = c(5,10,20,50),
@@ -1462,6 +1536,30 @@ server <- function(input, output, session){
   
   # construct line chart when the "construct line chart" button is clicked after a directory is selected
   output$picker_plot <- renderPlotly({
+    
+    # validation for the plot to work smoothly
+    validate(
+      need(nrow(rv$plot_data) > 0, " ")
+    )
+    
+    ggplotly(rv$plot_data %>% 
+               group_by(days) %>% 
+               count(days) %>% 
+               rename(count = n) %>% 
+               ggplot(aes(x = days, y = count)) +
+               geom_line(col = "#00FF00")+ 
+               geom_text(aes(label = count, vjust = -0.5, fontface = "bold"), col = "#003300") +
+               labs(title = "HTTP Requests over Time",
+                    x = "Days",
+                    y = "Total Requests") +
+               theme_light() +
+               theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                     axis.title.x = element_blank(),
+                     axis.title.y = element_text(size = 1.5)),tooltip = c("y","x"))
+  })
+  
+  # construct line chart when the "construct line chart" button is clicked after one or multiple files are selected
+  output$picker_plot_2 <- renderPlotly({
     
     # validation for the plot to work smoothly
     validate(
