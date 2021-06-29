@@ -3,6 +3,7 @@ library(shinydashboard)
 library(webreadr)
 library(DT)
 library(magrittr)
+library(fs)
 library(ggplot2)
 library(dplyr)
 library(plotly)
@@ -68,7 +69,7 @@ ui <- dashboardPage(skin = "black",
                                                                                                               label = "Change Rate of Update(per minute)",
                                                                                                               choices = c("1","5","10","15","20","30","60","90","120","180"),
                                                                                                               selected = ifelse(length(args) == 0,
-                                                                                                                                str_extract(string = readLines("live_logs.log.conf")[1], pattern = "\\d+"),
+                                                                                                                                str_extract(string = readLines("app.conf")[1], pattern = "\\d+"),
                                                                                                                                 args[1])))),
                                                                                   fluidRow(column(width = 12, align = "center",
                                                                                                   verbatimTextOutput("live_text"))),
@@ -397,7 +398,7 @@ ui <- dashboardPage(skin = "black",
 server <- function(input, output, session){
   
   # create home directory and volumes path
-  volumes <- c(Home = fs::path_wd(), 
+  volumes <- c(Home = path_wd(), 
                "R Installation" = R.home(), 
                getVolumes()())
   
@@ -1905,7 +1906,7 @@ server <- function(input, output, session){
   total_live_data <- reactiveFileReader( 
     intervalMillis = reactive({60000/as.numeric(input$live_numeric)}),
     session = session,
-    filePath = paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[6], "\\../.*"), "live_logs.log"),
+    filePath = paste0(getwd(),"/", readLines("app.conf")[6] %>% substr(8,10000L),  "live_logs.log"),
     readFunc = read_combined)
   
   # construct different versions of the live data using a .lock file
@@ -2015,7 +2016,9 @@ server <- function(input, output, session){
       output$live_chart <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0, "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_chart_reactive() %>% 
@@ -2035,7 +2038,9 @@ server <- function(input, output, session){
       output$live_request <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_request_reactive() %>% 
@@ -2055,7 +2060,9 @@ server <- function(input, output, session){
       output$live_query <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_query_reactive() %>% 
@@ -2075,7 +2082,9 @@ server <- function(input, output, session){
       output$live_status <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_status_reactive() %>% 
@@ -2097,7 +2106,9 @@ server <- function(input, output, session){
       output$live_agent <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_agent_reactive() %>% 
@@ -2117,7 +2128,9 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later in a new session.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_country_reactive() %>% 
@@ -2138,7 +2151,9 @@ server <- function(input, output, session){
       output$live_company <- renderPlot({
         
         validate(
-          need(!is.na(live_company_reactive()$isp), "The server is not available. Please try again later in a new session.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_company_reactive() %>% 
@@ -2218,7 +2233,7 @@ server <- function(input, output, session){
       
       # when the application is closed, simultaneously write the total number of lines in the live file 
       session$onSessionEnded(function(){
-        write_csv(length(readLines(paste0(getwd(),"/", str_extract(readLines("live_logs.log.conf")[6], "\\../.*"), "live_logs.log"))) %>% as_tibble(),
+        write_csv(length(readLines(paste0(getwd(),"/", readLines("app.conf")[6] %>% substr(8,10000L),  "live_logs.log"))) %>% as_tibble(),
                   file = "live_logs.log.lock",
                   col_names = FALSE)
       })
@@ -2298,7 +2313,9 @@ server <- function(input, output, session){
       output$live_chart <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0, "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_chart_reactive() %>% 
@@ -2318,7 +2335,9 @@ server <- function(input, output, session){
       output$live_request <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_request_reactive() %>% 
@@ -2338,7 +2357,9 @@ server <- function(input, output, session){
       output$live_query <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_query_reactive() %>% 
@@ -2358,7 +2379,9 @@ server <- function(input, output, session){
       output$live_status <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_status_reactive() %>% 
@@ -2380,7 +2403,9 @@ server <- function(input, output, session){
       output$live_agent <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 , "Please wait.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_agent_reactive() %>% 
@@ -2400,7 +2425,9 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(!is.na(live_country_reactive()$country_code), "The server is not available. Please try again later in a new session.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_country_reactive() %>% 
@@ -2421,7 +2448,9 @@ server <- function(input, output, session){
       output$live_company <- renderPlot({
         
         validate(
-          need(!is.na(live_company_reactive()$isp), "The server is not available. Please try again later in a new session.")
+          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
+                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
+                                                          "live_logs.log")), "Please wait.")
         )
         
         live_company_reactive() %>% 
