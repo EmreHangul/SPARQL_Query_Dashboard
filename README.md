@@ -18,12 +18,20 @@ In any case of needing further information related to the application, please co
 
 Screenshots from the application:
 
-![File/Directory selection tab:](C:\Users\Emre H\Desktop\TFM\ui-1.png)
-![Directory selection:](C:\Users\Emre H\Desktop\TFM\ui-4.png)
-![Directory selection:](C:\Users\Emre H\Desktop\TFM\ui-5.png)
-![Generating a line chart of HTTP Requests:](C:\Users\Emre H\Desktop\TFM\ui-6.png)
-![Top 10 "User-Agents" with the most HTTP Requests:](C:\Users\Emre H\Desktop\TFM\ui-9.png)
-![Number of "DESCRIBE" queries in each hour:](C:\Users\Emre H\Desktop\TFM\ui-12.png)
-![Number of "SELECT" queries in each hour by a specific IP address:](C:\Users\Emre H\Desktop\TFM\ui-13.png)
-![Incoming live HTTP Requests - Changing the "rate of update" is possible:](C:\Users\Emre H\Desktop\TFM\ui-15.png)
-![Lates 10 incoming live HTTP Requests - IP information provided by ipapi.com:](C:\Users\Emre H\Desktop\TFM\ui-16.png)
+![File/Directory selection tab:](images/ui-1.png)
+
+![Directory selection:](images/ui-4.png)
+
+![Directory selection:](images/ui-5.png)
+
+![Generating a line chart of HTTP Requests:](images/ui-6.png)
+
+![Top 10 "User-Agents" with the most HTTP Requests:](images/ui-9.png)
+
+![Number of "DESCRIBE" queries in each hour:](images/ui-12.png)
+
+![Number of "SELECT" queries in each hour by a specific IP address:](images/ui-13.png)
+
+![Incoming live HTTP Requests - Changing the "rate of update" is possible:](images/ui-15.png)
+
+![Lates 10 incoming live HTTP Requests - IP information provided by ipapi.com:](images/ui-16.png)
