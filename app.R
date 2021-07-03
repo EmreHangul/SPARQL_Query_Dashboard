@@ -616,18 +616,22 @@ server <- function(input, output, session){
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_3",
                            choices = levels(as.factor(rv$request$user_agent)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_3",
                            choices = levels(as.factor(rv$request$user_agent)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_4",
                            choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_4",
                            choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
                            server = TRUE)
     }
   })
@@ -683,18 +687,22 @@ server <- function(input, output, session){
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_3",
                            choices = levels(as.factor(rv$request$user_agent)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_3",
                            choices = levels(as.factor(rv$request$user_agent)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Requests_4",
                            choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
                            server = TRUE)
       updateSelectizeInput(session,
                            inputId = "selectize_Queries_4",
                            choices = levels(as.factor(rv$request$ip_address)),
+                           selected = "",
                            server = TRUE)
     }
   })
