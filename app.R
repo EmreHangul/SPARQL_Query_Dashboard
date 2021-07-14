@@ -751,6 +751,10 @@ server <- function(input, output, session){
     # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
     if(t == "hour"){
       
+      validate(
+        need(input$date_range_Requests_1[1] < input$date_range_Requests_1[2], "There is no data between selected dates. Please select a different date range.")
+      )
+      
       # construct hourly intervals
       hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$day)), 
                                           by = "1 hour", 
@@ -790,6 +794,10 @@ server <- function(input, output, session){
     
     # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
     if(t == "hour"){
+      
+      validate(
+        need(input$date_range_Requests_2[1] < input$date_range_Requests_2[2], "There is no data between selected dates. Please select a different date range.")
+      )
       
       # construct hourly intervals
       hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
@@ -858,6 +866,10 @@ server <- function(input, output, session){
       
       # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
       if(t == "hour"){
+        
+        validate(
+          need(input$date_range_Requests_3[1] < input$date_range_Requests_3[2], "There is no data between selected dates. Please select a different date range.")
+        )
         
         # construct hourly intervals
         hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
@@ -933,6 +945,10 @@ server <- function(input, output, session){
         # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
         if(t == "hour"){
           
+          validate(
+            need(input$date_range_Requests_4[1] < input$date_range_Requests_4[2], "There is no data between selected dates. Please select a different date range.")
+          )
+          
           # construct hourly intervals
           hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
                                               by = "1 hour", 
@@ -1001,6 +1017,10 @@ server <- function(input, output, session){
         # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
         if(t == "hour"){
           
+          validate(
+            need(input$date_range_Requests_4[1] < input$date_range_Requests_4[2], "There is no data between selected dates. Please select a different date range.")
+          )
+          
           # construct hourly intervals
           hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
                                               by = "1 hour", 
@@ -1045,6 +1065,10 @@ server <- function(input, output, session){
     # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
     if(t == "hour"){
       
+      validate(
+        need(input$date_range_Queries_1[1] < input$date_range_Queries_1[2], "There is no data between selected dates. Please select a different date range.")
+      )
+      
       # construct hourly intervals
       hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
                                           by = "1 hour", 
@@ -1084,6 +1108,10 @@ server <- function(input, output, session){
     
     # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
     if(t == "hour"){
+      
+      validate(
+        need(input$date_range_Queries_2[1] < input$date_range_Queries_2[2], "There is no data between selected dates. Please select a different date range.")
+      )
       
       # construct hourly intervals
       hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
@@ -1152,6 +1180,10 @@ server <- function(input, output, session){
       
       # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
       if(t == "hour"){
+        
+        validate(
+          need(input$date_range_Queries_3[1] < input$date_range_Queries_3[2], "There is no data between selected dates. Please select a different date range.")
+        )
         
         # construct hourly intervals
         hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
@@ -1226,6 +1258,10 @@ server <- function(input, output, session){
         # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
         if(t == "hour"){
           
+          validate(
+            need(input$date_range_Queries_4[1] < input$date_range_Queries_4[2], "There is no data between selected dates. Please select a different date range.")
+          )
+          
           # construct hourly intervals
           hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
                                               by = "1 hour", 
@@ -1292,6 +1328,10 @@ server <- function(input, output, session){
         
         # construct hourly intervals(bins) to increase visual effects (otherwise: countless x-values)
         if(t == "hour"){
+          
+          validate(
+            need(input$date_range_Queries_4[1] < input$date_range_Queries_4[2], "There is no data between selected dates. Please select a different date range.")
+          )
           
           # construct hourly intervals
           hour_groups <- as.character(cut(seq(as.POSIXct(min(rv$request$hour)), 
