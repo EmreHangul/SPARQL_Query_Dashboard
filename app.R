@@ -2073,16 +2073,26 @@ server <- function(input, output, session){
       # the .lock file value will be the number of lines in *all* of the live data
       lock_file_value <- reactive({nrow(total_live_data())}) 
       
+      # construct a reactive object using all of the live data
+      live_data <- reactive({total_live_data()})
+      
       # show the # of total lines in the data and the # of unread data (in this case, they are the same!)
       output$number_of_lines_total <- renderText({
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         lock_file_value()
       })
       output$number_of_lines_unread <- renderText({
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         lock_file_value()
       })
-      
-      # construct a reactive object using all of the live data
-      live_data <- reactive({total_live_data()})
       
       # when the user closes the application, write the number of total data to a .lock file
       session$onSessionEnded(function(){
@@ -2093,6 +2103,11 @@ server <- function(input, output, session){
       
       # show the last 10 lines in the live data
       output$live_text <- renderPrint({
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         live_data() %>% as.data.frame() %>% tail(10) %>% print 
       })
       
@@ -2171,10 +2186,12 @@ server <- function(input, output, session){
       output$live_chart <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
-        )
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),
+                                  readLines("app.conf")[9] %>% substr(23,10000L))),'This message is displayed because there is not a log file defined. 
+               You can define a live log file by following the instructions given in the "app.conf" file. If you do not want to use a live log file,
+               then you can still use this application by exploring already downloaded log files, using the "Files" tab.')
+       )
         
         live_chart_reactive() %>% 
           ggplot(aes(x = seconds, y = count)) +
@@ -2193,9 +2210,9 @@ server <- function(input, output, session){
       output$live_request <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_request_reactive() %>% 
@@ -2215,9 +2232,9 @@ server <- function(input, output, session){
       output$live_query <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_query_reactive() %>% 
@@ -2237,9 +2254,9 @@ server <- function(input, output, session){
       output$live_status <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_status_reactive() %>% 
@@ -2261,9 +2278,9 @@ server <- function(input, output, session){
       output$live_agent <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_agent_reactive() %>% 
@@ -2283,9 +2300,9 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_country_reactive() %>% 
@@ -2306,9 +2323,9 @@ server <- function(input, output, session){
       output$live_company <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_company_reactive() %>% 
@@ -2328,6 +2345,12 @@ server <- function(input, output, session){
       rv_ip <- reactiveValues(ip = data.frame())
       
       observeEvent(input$live_action_ip, {
+        
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         
         # when the "apply" button in "live data" tab is clicked, update the selectize input to include all 
         # of the IP addresses found so far
@@ -2366,22 +2389,35 @@ server <- function(input, output, session){
       # lock file value that corresponds to *unread* data
       lock_file_value <- reactive({nrow(total_live_data())- read.table(paste0(readLines("app.conf")[9] %>% substr(23,10000L), ".lock"))[1,1]})
       
-      # show the # of total lines in the data and the # of unread data (in this case, they are different!
-      # Total number of data is greater than the amount of *unread* data!)
-      output$number_of_lines_total <- renderText({
-        
-        nrow(total_live_data())
-      })
-      output$number_of_lines_unread <- renderText({
-        lock_file_value()
-      })
-      
       # reactive data that corresponds to the *unread* portion of the live data
       live_data <- reactive({tail(total_live_data(), lock_file_value())})
       
+      # show the # of total lines in the data and the # of unread data (in this case, they are different!
+      # Total number of data is greater than the amount of *unread* data!)
+      output$number_of_lines_total <- renderText({
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
+        nrow(total_live_data())
+      })
+      output$number_of_lines_unread <- renderText({
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
+        lock_file_value()
+      })
+      
       # show the last 10 lines of the unread data
       output$live_text <- renderPrint({
-        
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         live_data() %>% as.data.frame() %>% tail(10) %>% print
         
       })
@@ -2468,9 +2504,11 @@ server <- function(input, output, session){
       output$live_chart <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),
+                                  readLines("app.conf")[9] %>% substr(23,10000L))),'This message is displayed because there is not a log file defined. 
+               You can define a live log file by following the instructions given in the "app.conf" file. If you do not want to use a live log file,
+               then you can still use this application by exploring already downloaded log files, using the "Files" tab.')
         )
         
         live_chart_reactive() %>% 
@@ -2490,9 +2528,9 @@ server <- function(input, output, session){
       output$live_request <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_request_reactive() %>% 
@@ -2512,9 +2550,9 @@ server <- function(input, output, session){
       output$live_query <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_query_reactive() %>% 
@@ -2534,9 +2572,9 @@ server <- function(input, output, session){
       output$live_status <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_status_reactive() %>% 
@@ -2558,9 +2596,9 @@ server <- function(input, output, session){
       output$live_agent <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_agent_reactive() %>% 
@@ -2580,9 +2618,9 @@ server <- function(input, output, session){
       output$live_country <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_country_reactive() %>% 
@@ -2603,9 +2641,9 @@ server <- function(input, output, session){
       output$live_company <- renderPlot({
         
         validate(
-          need(nrow(live_data()) > 0 & file.exists(paste0(getwd(),"/", 
-                                                          readLines("app.conf")[6] %>% substr(8,10000L),  
-                                                          readLines("app.conf")[9] %>% substr(23,10000L))), "Please wait.")
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
         )
         
         live_company_reactive() %>% 
@@ -2625,6 +2663,12 @@ server <- function(input, output, session){
       rv_ip <- reactiveValues(ip = data.frame())
       
       observeEvent(input$live_action_ip, {
+        
+        validate(
+          need(file.exists(paste0(getwd(),"/", 
+                                  readLines("app.conf")[6] %>% substr(8,10000L),  
+                                  readLines("app.conf")[9] %>% substr(23,10000L))), "Not available.")
+        )
         
         # when the "apply" button in "live data" tab is clicked, update the selectize input to include all 
         # of the IP addresses found so far
