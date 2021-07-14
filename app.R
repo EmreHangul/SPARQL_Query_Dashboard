@@ -411,7 +411,16 @@ server <- function(input, output, session){
   # create home directory and volumes path
   volumes <- c(Home = path_wd(), 
                "R Installation" = R.home(), 
-               getVolumes()())
+                getVolumes()())
+  
+  # if one of the volumes is empty (has no directories or files), then exclude that volume
+  for (i in 1:length(getVolumes()())) {
+    if(length(dir(getVolumes()()[i])) != 0){
+      volumes[i+2] <- getVolumes()()[i]
+    } else {
+      volumes <- volumes[-(i+2)]
+    }
+  }
   
   # choose file from the system
   shinyFileChoose(input, "file", 
